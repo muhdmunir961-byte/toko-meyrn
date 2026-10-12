@@ -1,0 +1,186 @@
+# Production reference topology (single-node Docker Compose).
+# This is NOT a high-availability setup: PostgreSQL and Redis are single-instance.
+# See PRODUCTION_READINESS.md for single points of failure.
+
+name: topup-production
+
+x-app-env: &app-env
+  NODE_ENV: production
+  PORT: "3000"
+  HOST: 0.0.0.0
+  DATABASE_URL: ${DATABASE_URL}
+  REDIS_URL: ${REDIS_URL}
+  JWT_SECRET: ${JWT_SECRET}
+  API_KEY_PEPPER: ${API_KEY_PEPPER}
+  CREDENTIAL_ENCRYPTION_KEY_BASE64: ${CREDENTIAL_ENCRYPTION_KEY_BASE64}
+  MAX_RESELLER_DEPTH: ${MAX_RESELLER_DEPTH:-3}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL}
+  AI_BASE_URL: ${AI_BASE_URL:-}
+  AI_API_KEY: ${AI_API_KEY:-}
+  AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-}
+  AI_FALLBACK_MODEL: ${AI_FALLBACK_MODEL:-}
+  AI_TIMEOUT_MS: ${AI_TIMEOUT_MS:-15000}
+  AI_MAX_OUTPUT_TOKENS: ${AI_MAX_OUTPUT_TOKENS:-1000}
+  ALERT_CHANNEL_ID: ${ALERT_CHANNEL_ID:-}
+  ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    # No host ports: PostgreSQL is reachable only on the private network.
+    expose:
+      - "5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks: [backend]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No host ports; private network only.
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    networks: [backend]
+
+  migrate:
+    image: ${API_IMAGE:-topup-api}:${API_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Build stage retains the Prisma CLI (pruned from the runtime image).
+      target: migrate
+    # Applies reviewed migrations from prisma/migrations. Never uses `db push`.
+    # Fails safely if no migrations are present (expected until generated in a
+    # Node environment: `npx prisma migrate dev --name <name>`).
+    command: ["npx", "prisma", "migrate", "deploy"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks: [backend]
+
+  api:
+    image: ${API_IMAGE:-topup-api}:${API_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment: *app-env
+    expose:
+      - "3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+        reservations:
+          memory: 256m
+    networks: [backend, frontend]
+    # Reverse proxy is the only public entry point.
+
+  worker:
+    image: ${API_IMAGE:-topup-api}:${API_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/src/workers/run.js"]
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks: [backend]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL}
+      DOMAIN: ${DOMAIN}
+      SELLER_DOMAINS: ${SELLER_DOMAINS:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks: [frontend]
+
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      BACKUP_ENCRYPTION_KEY_BASE64: ${BACKUP_ENCRYPTION_KEY_BASE64}
+      BACKUP_DESTINATION: ${BACKUP_DESTINATION:-/backups}
+      BACKUP_RETENTION_DAILY: ${BACKUP_RETENTION_DAILY:-7}
+      BACKUP_RETENTION_WEEKLY: ${BACKUP_RETENTION_WEEKLY:-4}
+      BACKUP_RETENTION_MONTHLY: ${BACKUP_RETENTION_MONTHLY:-12}
+    volumes:
+      - ./scripts:/scripts:ro
+      - backup_data:/backups
+    # The postgres base image lacks the `openssl` CLI needed for encrypted backups;
+    # install it at container start, then run the backup loop.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["apk add --no-cache openssl >/dev/null 2>&1 || true; while true; do /scripts/backup-database.sh; sleep 86400; done"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+volumes:
+  pg_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
+  backup_data:
+
+networks:
+  backend:
+    internal: true
+  frontend:
+    internal: false

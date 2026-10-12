@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "name": "ai chat: label + answer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "ai chat: secret answer redacted",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "ai chat: integration error surfaced",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "ai analytics: KPIs + explanation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "automation: whatsapp + replay + api key masking",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "unauthorized: CUSTOMER bounced from AI analytics",
+      "ok": true,
+      "detail": "http://localhost:4173/dash"
+    }
+  ],
+  "failed": 0
+}

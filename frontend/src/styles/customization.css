@@ -1,0 +1,122 @@
+@import './tokens.css';
+
+/* ============================================================================
+   Storefront customization editor. Two-column layout: form + live preview.
+   ========================================================================== */
+
+.custom {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+.custom__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.custom__card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.custom__card-head {
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.custom__card-title {
+  font-size: var(--text-lg);
+}
+
+.custom__card-body {
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.custom__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.custom__swatch {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  flex-shrink: 0;
+}
+
+.custom__checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.custom__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+.custom__badge-inline {
+  margin-left: var(--space-2);
+}
+
+.custom__preview {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+}
+
+.custom__preview-frame {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.custom__preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.custom__preview-dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--color-border-strong);
+}
+
+.custom__preview-body {
+  padding: var(--space-4);
+  min-height: 18rem;
+}
+
+.custom__dirty-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-warning);
+  border-radius: var(--radius-md);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 1024px) {
+  .custom {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}

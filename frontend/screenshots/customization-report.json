@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "name": "preview consistency: accent reflected",
+      "ok": true,
+      "detail": "input=#8057f5"
+    },
+    {
+      "name": "unsaved-change warning shows on edit",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "save branding clears dirty state",
+      "ok": true,
+      "detail": "before=true after=false"
+    },
+    {
+      "name": "domains: list + add + state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "tenant separation: other tenant sees empty domains",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "mobile layout: no horizontal overflow at 375px",
+      "ok": true,
+      "detail": "overflow=0"
+    }
+  ],
+  "failed": 0
+}

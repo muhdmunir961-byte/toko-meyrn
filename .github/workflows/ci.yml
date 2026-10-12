@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: "22"
+  DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+  REDIS_URL: redis://localhost:6379
+  JWT_SECRET: ci-only-secret-not-for-production-0000000000000000
+  API_KEY_PEPPER: ci-only-secret-not-for-production-0000000000000000
+  CREDENTIAL_ENCRYPTION_KEY_BASE64: Y2ktb25seS0zMi1ieXRlLWtleS1mb3ItdGVzdGluZy1vbmx5IQ==
+  NODE_ENV: test
+
+jobs:
+  verify:
+    name: Typecheck, tests & security scan
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+        working-directory: backend
+
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        working-directory: backend
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: backend
+
+      - name: Typecheck
+        run: npm run build
+        working-directory: backend
+
+      - name: Run tests
+        run: npm test
+        working-directory: backend
+
+      - name: Dependency audit (security scan)
+        # `npm audit` fails the step on high/critical advisories; the `--audit-level`
+        # keeps the gate meaningful without blocking on low-severity findings.
+        run: npm audit --audit-level=high --omit=dev
+        working-directory: backend
+
+  docker:
+    name: Build & scan image
+    runs-on: ubuntu-latest
+    needs: verify
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: false
+          tags: topup-api:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Scan image with Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: topup-api:ci
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+
+  deploy-staging:
+    name: Deploy to staging (approval-gated)
+    runs-on: ubuntu-latest
+    needs: docker
+    # Staging deploys on push to main only; PRs stop at verify/docker.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder — deploy via your orchestrator
+        # Replace with your real deploy (e.g. docker compose, Helm, ECS, Fly, Render).
+        run: |
+          echo "Staging deployment step. Configure your deploy target here."
+          echo "Do NOT hardcode credentials; use GitHub Actions secrets."
+
+  deploy-production:
+    name: Deploy to production (manual approval)
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    # Production is gated on an explicit manual approval via a protected
+    # environment (configure required reviewers in repo settings).
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder — deploy via your orchestrator
+        run: |
+          echo "Production deployment step. Configure your deploy target here."
+          echo "Requires manual approval via the 'production' environment."

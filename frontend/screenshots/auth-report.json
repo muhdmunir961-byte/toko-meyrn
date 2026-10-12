@@ -1,0 +1,40 @@
+{
+  "results": [
+    {
+      "name": "invalid input: blocks mismatched passwords",
+      "ok": true,
+      "detail": "error=\"Please fix the highlighted fields.\""
+    },
+    {
+      "name": "success: registration lands on onboarding",
+      "ok": true,
+      "detail": "Set up your store"
+    },
+    {
+      "name": "duplicate registration: 409 -> helpful error",
+      "ok": true,
+      "detail": "That email is already registered. Try signing in instead."
+    },
+    {
+      "name": "invalid login: 401 -> helpful error",
+      "ok": true,
+      "detail": "Invalid email or password."
+    },
+    {
+      "name": "forbidden access: CUSTOMER role bounced",
+      "ok": true,
+      "detail": "http://localhost:4173/dash"
+    },
+    {
+      "name": "absent session: /onboarding redirects to /login",
+      "ok": true,
+      "detail": "http://localhost:4173/login"
+    },
+    {
+      "name": "incomplete onboarding: shows branding step for fresh OWNER",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "failed": 0
+}

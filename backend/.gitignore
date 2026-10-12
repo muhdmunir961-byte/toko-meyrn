@@ -1,0 +1,18 @@
+# ---- Node / JS ----
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ---- Rahsia & env (JANGAN commit) ----
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# ---- Database dumps / backup ----
+*.sql
+*.dump
+*.tar.gz
+
+# ---- Log ----
+*.log

@@ -1,0 +1,32 @@
+# Staging override — mirrors production with reduced resource limits and
+# staging-specific values. Merge with the base production file:
+#
+#   docker compose -f docker-compose.production.yml \
+#                  -f docker-compose.staging.yml up -d --build
+
+name: topup-staging
+
+services:
+  api:
+    environment:
+      NODE_ENV: staging
+      PUBLIC_BASE_URL: ${STAGING_PUBLIC_BASE_URL:-https://staging.example.com}
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  worker:
+    environment:
+      NODE_ENV: staging
+      WORKER_CONCURRENCY: "2"
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  caddy:
+    environment:
+      DOMAIN: ${STAGING_DOMAIN:-staging.example.com}
+      # Staging uses Let's Encrypt staging CA (no real cert issuance).
+      CADDY_ACME_CA: https://acme-staging-v02.api.letsencrypt.org/directory

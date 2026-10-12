@@ -1,0 +1,14 @@
+# Cloudflare Pages headers — ditambah pada setiap respons aset statik.
+# (CSP penuh sudah ada dalam index.html; ini lapisan kedua untuk aset.)
+
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: no-referrer
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/index.html
+  Cache-Control: no-cache

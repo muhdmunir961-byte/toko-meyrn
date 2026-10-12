@@ -1,0 +1,45 @@
+{
+  "results": [
+    {
+      "name": "homepage: catalog renders + tenant branding applied",
+      "ok": true,
+      "detail": "style=\"--color-primary: #00c2a8; --color-primary-hover: #00c2a8; --color-brand-500: #00c2a8; --color-brand-400: #9877ff;\""
+    },
+    {
+      "name": "search: filters to empty state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "product detail: missing player ID blocks checkout",
+      "ok": true,
+      "detail": "Enter your player ID (user ID)."
+    },
+    {
+      "name": "journey: order created with distinct payment/fulfillment states",
+      "ok": true,
+      "detail": "pay=pending fulfill=awaiting payment"
+    },
+    {
+      "name": "journey: mock payment -> fulfilled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "duplicate-submission: single idempotency key used",
+      "ok": true,
+      "detail": "keys=1"
+    },
+    {
+      "name": "unavailable product: error surfaced",
+      "ok": true,
+      "detail": "one or more products unavailable"
+    },
+    {
+      "name": "payment failure: error surfaced, not fulfilled",
+      "ok": true,
+      "detail": "payment failed"
+    }
+  ],
+  "failed": 0
+}

@@ -1,0 +1,3 @@
+# Cloudflare Pages redirects — SPA fallback.
+# Mana-mana laluan yang tiada fail sebenar akan dihantar ke index.html (status 200).
+/*  /index.html  200
