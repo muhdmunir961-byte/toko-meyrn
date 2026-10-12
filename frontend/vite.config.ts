@@ -7,19 +7,33 @@ const apiProxyTarget =
   (import.meta as { env?: Record<string, string | undefined> }).env
     ?.VITE_API_PROXY_TARGET ?? 'http://localhost:3000';
 
-// Same-origin reverse proxy: Caddy serves the SPA and the Fastify API on one
-// origin (CORS is `origin: false` in the backend). In dev, proxy /api to the
-// local API so the client can use relative URLs unchanged.
+// Trusted hostnames (NOT `allowedHosts: true`). These are the hosts that may
+// reach the dev/preview server through a reverse proxy (e.g. code-server /
+// Cloudflare tunnel). Requests with any other Host header are rejected with a
+// 403 to prevent DNS-rebinding attacks.
+const trustedHosts = [
+  'localhost',
+  '127.0.0.1',
+  '.codespaces.githubusercontent.com',
+  '.github.dev',
+  '.preview.app.github.dev',
+  // Add your specific tunnel/proxy hostname here if needed.
+];
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
+    allowedHosts: trustedHosts,
     proxy: {
       '/api': {
         target: apiProxyTarget,
         changeOrigin: true,
       },
     },
+  },
+  preview: {
+    allowedHosts: trustedHosts,
   },
   build: {
     target: 'es2020',
