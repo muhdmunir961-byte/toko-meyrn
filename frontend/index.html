@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Premium gaming commerce — launch a white-label top-up storefront, route orders, and grow with resellers." />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'sha256-nhSN5+7axuJ9LL6bgEqjgZGwul3l+pWTugG6qU0BngQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    />
+    <title>Topup SaaS</title>
+    <script>
+      // Resolve the persisted theme preference before first paint to prevent a
+      // flash of the incorrect theme (FOUC). Mirrors the logic in
+      // src/lib/theme.tsx (resolveTheme).
+      (function () {
+        try {
+          var KEY = 'tpt.theme';
+          var stored = localStorage.getItem(KEY);
+          var pref = stored === 'light' || stored === 'dark' || stored === 'system'
+            ? stored
+            : 'system';
+          var resolved =
+            pref === 'system'
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
+              : pref;
+          document.documentElement.setAttribute('data-theme', resolved);
+          document.documentElement.style.colorScheme = resolved;
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

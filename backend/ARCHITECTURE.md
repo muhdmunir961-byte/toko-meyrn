@@ -1,0 +1,3 @@
+# Architecture
+
+Phase 1 is a modular Fastify monolith using PostgreSQL/Prisma. Tenant-owned rows carry `tenantId`; route services derive it from the authenticated user membership, never from request payloads. Monetary values are integer IDR minor units. Payment and provider integrations are deliberately mock-only until official credentials and documentation are supplied. Fulfillment is represented by an idempotent order/provider transaction boundary; BullMQ workers are planned for the next implementation slice.

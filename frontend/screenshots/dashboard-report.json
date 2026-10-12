@@ -1,0 +1,55 @@
+{
+  "results": [
+    {
+      "name": "overview: KPIs render",
+      "ok": true,
+      "detail": "first=Rp 12.000"
+    },
+    {
+      "name": "orders: table + pagination + detail drawer",
+      "ok": true,
+      "detail": "rows=10"
+    },
+    {
+      "name": "orders: empty state",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "catalog: add product closes dialog on success",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "catalog: API error surfaced",
+      "ok": true,
+      "detail": "master product not found"
+    },
+    {
+      "name": "pricing: financial operation requires confirmation",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "providers: list + test connection",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "settings: save + payment-gap label",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "permission: CUSTOMER bounced from /dash",
+      "ok": true,
+      "detail": "http://localhost:4173/dash"
+    },
+    {
+      "name": "overview: API error empty state",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "failed": 0
+}

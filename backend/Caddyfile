@@ -1,0 +1,89 @@
+# Caddy 2 reverse proxy for the Topup SaaS API.
+# Placeholders are substituted from environment variables at container start.
+#
+# Security posture:
+#  - Only the primary API domain (and explicitly allow-listed, DNS-verified seller
+#    domains) receive TLS certificates. Caddy's automatic HTTPS is used for the
+#    primary domain only; seller custom domains must be added to SELLER_DOMAINS
+#    after ownership verification (never issue certs for unverified domains).
+#  - Host and X-Forwarded-* headers are not trusted from arbitrary clients; the API
+#    trusts the proxy only over the private network.
+
+{
+	# Global options
+	email {$CADDY_ACME_EMAIL}
+	# Disable the admin endpoint on the public interface (localhost only by default).
+	admin off
+	# Log to stdout for aggregation (structured via access log format).
+	log {
+		output stdout
+		format json
+	}
+}
+
+# --- Primary API host ---
+{$DOMAIN} {
+	encode gzip zstd
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'sha256-nhSN5+7axuJ9LL6bgEqjgZGwul3l+pWTugG6qU0BngQ='; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+		-Server
+		-X-Powered-By
+	}
+
+	# Request size limit (aligns with Fastify bodyLimit).
+	request_body {
+		max_size 1MB
+	}
+
+	# API routing
+	handle {
+		reverse_proxy api:3000 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-For {remote_host}
+			# Connection timeouts.
+			transport http {
+				dial_timeout 10s
+				response_header_timeout 60s
+				read_timeout 60s
+				write_timeout 60s
+			}
+		}
+	}
+
+	# Webhook endpoints ride the same API service; no special handling needed.
+}
+
+# --- Seller custom domains (allow-listed) ---
+# SELLER_DOMAINS is a comma/space-separated list of verified seller domains.
+# Each is served over HTTPS only after the operator confirms DNS ownership
+# via the Phase 4 domain verification flow. Never add unverified domains.
+{$SELLER_DOMAINS} {
+	encode gzip zstd
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+		-X-Powered-By
+	}
+	handle {
+		reverse_proxy api:3000 {
+			header_up X-Forwarded-Proto https
+			header_up X-Forwarded-Host {host}
+		}
+	}
+}
+
+# --- HTTP -> HTTPS redirect for any host not otherwise matched ---
+http:// {
+	redir https://{host}{uri} 301
+}

@@ -1,0 +1,134 @@
+[
+  {
+    "path": "/",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 1
+  },
+  {
+    "path": "/login",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 1
+  },
+  {
+    "path": "/register",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 1
+  },
+  {
+    "path": "/showcase",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 0
+  },
+  {
+    "path": "/nova-topup",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 1
+  },
+  {
+    "path": "/onboarding",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 1
+  },
+  {
+    "path": "/dash",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/orders",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/catalog",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/pricing",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/providers",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/analytics",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/settings",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/alerts",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/customization",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/ai",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/ai-analytics",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/dash/automation",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/admin",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/admin/fraud",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/admin/operations",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  },
+  {
+    "path": "/admin/plans",
+    "pageErrors": [],
+    "consoleErrors": [],
+    "h1Count": 2
+  }
+]

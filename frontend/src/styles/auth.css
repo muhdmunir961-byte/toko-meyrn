@@ -1,0 +1,311 @@
+@import './tokens.css';
+
+/* ============================================================================
+   Auth & onboarding forms. Mobile-first, card-centred, dark/light aware.
+   ========================================================================== */
+
+.auth {
+  min-height: calc(100vh - 4rem);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: var(--space-10) var(--space-5);
+}
+
+.auth__card {
+  width: 100%;
+  max-width: 30rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.auth__body {
+  padding: var(--space-8);
+}
+
+.auth__title {
+  font-size: var(--text-2xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+.auth__subtitle {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+}
+
+.auth__form {
+  margin-top: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.auth__error {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-danger);
+}
+
+.auth__success {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  font-size: var(--text-sm);
+  border: 1px solid var(--color-success);
+}
+
+.auth__footer {
+  margin-top: var(--space-6);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.auth__footer a {
+  font-weight: var(--weight-semibold);
+}
+
+.auth__hint {
+  font-size: var(--text-xs);
+  color: var(--color-text-faint);
+}
+
+/* Field helper: slug preview + availability */
+.auth__slug {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.auth__slug-ok {
+  color: var(--color-success);
+}
+
+.auth__slug-bad {
+  color: var(--color-danger);
+}
+
+/* Step progress indicator (registration + onboarding) */
+.auth__steps {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.auth__step {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--color-surface-hover);
+  overflow: hidden;
+}
+
+.auth__step--active {
+  background: var(--color-primary);
+}
+
+.auth__step--done {
+  background: var(--color-success);
+}
+
+/* Branding preview swatch */
+.auth__color-row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.auth__color-input {
+  flex: 1;
+}
+
+.auth__color-preview {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+}
+
+/* Plan selector cards */
+.auth__plans {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+
+.auth__plan {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--duration-fast) var(--ease-standard);
+}
+
+.auth__plan:hover {
+  border-color: var(--color-border-strong);
+}
+
+.auth__plan--selected {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+.auth__plan-radio {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth__plan--selected .auth__plan-radio {
+  border-color: var(--color-primary);
+}
+
+.auth__plan--selected .auth__plan-radio::after {
+  content: '';
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: var(--radius-full);
+  background: var(--color-primary);
+}
+
+.auth__plan-info {
+  flex: 1;
+}
+
+.auth__plan-name {
+  font-weight: var(--weight-semibold);
+}
+
+.auth__plan-price {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Checklist items (provider/payment config) */
+.auth__checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.auth__check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.auth__check-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--color-text-faint);
+}
+
+.auth__check-item--done .auth__check-icon {
+  color: var(--color-success);
+}
+
+.auth__check-label {
+  flex: 1;
+}
+
+.auth__check-title {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-sm);
+}
+
+.auth__check-desc {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  margin-top: var(--space-1);
+}
+
+/* Onboarding completion dashboard */
+.auth__complete {
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+.auth__complete-ring {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 5rem;
+  height: 5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-success-bg);
+  color: var(--color-success);
+  margin-bottom: var(--space-4);
+}
+
+.auth__complete-title {
+  font-size: var(--text-2xl);
+}
+
+.auth__complete-lead {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.auth__summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  text-align: left;
+}
+
+.auth__summary-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+}
+
+.auth__summary-row svg {
+  flex-shrink: 0;
+}
+
+.auth__summary-row--done svg {
+  color: var(--color-success);
+}
+
+.auth__summary-row--todo svg {
+  color: var(--color-text-faint);
+}
+
+@media (min-width: 640px) {
+  .auth__plans {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+

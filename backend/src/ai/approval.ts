@@ -1,0 +1,1 @@
+export function canActivateIntegration(state: string, reviewerRole: string, aiInitiated: boolean) { return state === 'APPROVED' && reviewerRole === 'SUPER_ADMIN' && !aiInitiated; }

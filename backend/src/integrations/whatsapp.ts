@@ -1,0 +1,5 @@
+export type WhatsAppMessage = { recipient: string; text: string; eventType: string };
+export interface WhatsAppAdapter { readonly type: string; send(message: WhatsAppMessage): Promise<{ accepted: boolean; providerReference?: string }>; }
+export class MockWhatsAppAdapter implements WhatsAppAdapter { readonly type = 'MOCK'; async send(message: WhatsAppMessage) { return { accepted: Boolean(message.recipient && message.text), providerReference: `mock-wa-${Date.now()}` }; } }
+export class OfficialWhatsAppAdapter implements WhatsAppAdapter { readonly type = 'OFFICIAL'; async send() { throw new Error('Official WhatsApp transport requires verified Meta configuration'); } }
+export const whatsappAdapters = { MOCK: new MockWhatsAppAdapter(), OFFICIAL: new OfficialWhatsAppAdapter() };

@@ -1,0 +1,7 @@
+import { createCipheriv, createDecipheriv, createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+
+function key() { const value = process.env.CREDENTIAL_ENCRYPTION_KEY_BASE64; if (!value) throw new Error('CREDENTIAL_ENCRYPTION_KEY_BASE64 is required'); const decoded = Buffer.from(value, 'base64'); if (decoded.length !== 32) throw new Error('credential key must be 32 bytes'); return decoded; }
+export function encryptSecret(value: string) { const iv = randomBytes(12); const cipher = createCipheriv('aes-256-gcm', key(), iv); const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]); return { ciphertext: ciphertext.toString('base64'), iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64') }; }
+export function decryptSecret(input: { ciphertext: string; iv: string; tag: string }) { const decipher = createDecipheriv('aes-256-gcm', key(), Buffer.from(input.iv, 'base64')); decipher.setAuthTag(Buffer.from(input.tag, 'base64')); return Buffer.concat([decipher.update(Buffer.from(input.ciphertext, 'base64')), decipher.final()]).toString('utf8'); }
+export function hashApiKey(value: string) { return createHash('sha256').update(`${process.env.API_KEY_PEPPER ?? ''}:${value}`).digest('hex'); }
+export function safeEqual(a: string, b: string) { const left = Buffer.from(a); const right = Buffer.from(b); return left.length === right.length && timingSafeEqual(left, right); }

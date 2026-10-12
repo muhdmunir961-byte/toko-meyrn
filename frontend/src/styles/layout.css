@@ -1,0 +1,326 @@
+@import './tokens.css';
+
+/* ============================ Navbar (marketing) ============================ */
+.tpt-navbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-dropdown);
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tpt-navbar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: var(--space-3) var(--space-5);
+}
+
+.tpt-navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+}
+
+.tpt-navbar__logo {
+  display: inline-flex;
+  color: var(--color-primary);
+}
+
+.tpt-navbar__links {
+  display: flex;
+  gap: var(--space-2);
+  margin-left: var(--space-4);
+}
+
+.tpt-navbar__link {
+  padding: var(--space-2) var(--space-3);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  border-radius: var(--radius-md);
+}
+
+.tpt-navbar__link:hover {
+  color: var(--color-text);
+  background-color: var(--color-surface-hover);
+}
+
+.tpt-navbar__link.active {
+  color: var(--color-primary);
+}
+
+.tpt-navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.tpt-navbar__menu-btn {
+  display: none;
+}
+
+.tpt-navbar__mobile {
+  display: none;
+}
+
+@media (max-width: 767px) {
+  .tpt-navbar__links,
+  .tpt-navbar__actions > *:not(.tpt-navbar__menu-btn) {
+    display: none;
+  }
+  .tpt-navbar__menu-btn {
+    display: inline-flex;
+  }
+  .tpt-navbar__mobile {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-3) var(--space-5) var(--space-5);
+    border-top: 1px solid var(--color-border);
+  }
+  .tpt-navbar__mobile-link {
+    padding: var(--space-3) var(--space-2);
+    color: var(--color-text);
+    font-size: var(--text-base);
+    border-bottom: 1px solid var(--color-border);
+  }
+}
+
+/* ============================ Sidebar (dashboard) ============================ */
+.tpt-sidebar--desktop {
+  display: none;
+}
+
+.tpt-sidebar__content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tpt-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  color: var(--color-text);
+  border-bottom: 1px solid var(--color-border);
+}
+.tpt-sidebar__brand svg {
+  color: var(--color-primary);
+}
+
+.tpt-sidebar__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tpt-sidebar__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  text-decoration: none;
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard);
+}
+
+.tpt-sidebar__item:hover {
+  background-color: var(--color-surface-hover);
+  color: var(--color-text);
+}
+
+.tpt-sidebar__item--active {
+  background-color: var(--color-brand-500);
+  color: #ffffff;
+}
+.tpt-sidebar__item--active:hover {
+  background-color: var(--color-brand-500);
+  color: #ffffff;
+}
+
+.tpt-sidebar__item--plain {
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.tpt-sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+/* Off-canvas drawer (mobile/tablet) */
+.tpt-sidebar__drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+}
+
+.tpt-sidebar__backdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+.tpt-sidebar--mobile {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 17rem;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
+  animation: tpt-drawer-in var(--duration-base) var(--ease-emphasized);
+}
+
+@keyframes tpt-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@media (min-width: 1024px) {
+  .tpt-sidebar--desktop {
+    display: block;
+    width: 16rem;
+    flex-shrink: 0;
+    background-color: var(--color-surface);
+    border-right: 1px solid var(--color-border);
+  }
+}
+
+/* ============================ App shell ============================ */
+.tpt-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.tpt-shell__main {
+  flex: 1;
+  min-width: 0;
+}
+
+.tpt-appbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tpt-appbar__title {
+  font-size: var(--text-lg);
+}
+
+.tpt-appbar__menu {
+  display: inline-flex;
+}
+
+@media (min-width: 1024px) {
+  .tpt-appbar__menu {
+    display: none;
+  }
+}
+
+.tpt-page {
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-5);
+}
+
+.tpt-page__header {
+  margin-bottom: var(--space-6);
+}
+
+.tpt-page__title {
+  font-size: var(--text-2xl);
+}
+
+.tpt-page__subtitle {
+  margin-top: var(--space-2);
+  color: var(--color-text-muted);
+}
+
+.tpt-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.tpt-grid--cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tpt-grid--cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.tpt-grid--cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 1023px) {
+  .tpt-grid--cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .tpt-grid--cols-2,
+  .tpt-grid--cols-3,
+  .tpt-grid--cols-4 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Marketing hero / section helpers */
+.tpt-hero {
+  padding: var(--space-16) var(--space-5);
+  text-align: center;
+}
+
+.tpt-hero__title {
+  font-size: var(--text-4xl);
+  letter-spacing: var(--tracking-tight);
+}
+
+.tpt-hero__subtitle {
+  max-width: 36rem;
+  margin: var(--space-4) auto 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-lg);
+}
+
+.tpt-hero__actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+.tpt-container {
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  padding: 0 var(--space-5);
+}

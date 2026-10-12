@@ -1,0 +1,2 @@
+export type OrderMetric = { totalMinor: number; costMinor: number; status: string; createdAt: Date };
+export function calculateAnalytics(orders: OrderMetric[]) { const successful = orders.filter(o => o.status === 'SUCCESS'); const revenueMinor = successful.reduce((n, o) => n + o.totalMinor, 0); const costMinor = successful.reduce((n, o) => n + o.costMinor, 0); return { orderCount: orders.length, successfulOrders: successful.length, revenueMinor, estimatedGrossProfitMinor: revenueMinor - costMinor, evidenceOrderIds: orders.map((_, i) => i) }; }

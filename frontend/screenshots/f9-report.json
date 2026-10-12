@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "name": "admin overview: health + plans",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fraud review: list + confirm dialog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "plans: edit + confirm dialog",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "operations: health status + timestamp",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "non-admin OWNER: bounced from /admin",
+      "ok": true,
+      "detail": "http://localhost:4173/dash"
+    },
+    {
+      "name": "non-admin CUSTOMER: bounced from /admin/fraud",
+      "ok": true,
+      "detail": "http://localhost:4173/dash"
+    }
+  ],
+  "failed": 0
+}
