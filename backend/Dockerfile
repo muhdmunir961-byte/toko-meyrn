@@ -4,7 +4,11 @@ WORKDIR /app
 
 # Copy manifests first for deterministic layer caching.
 COPY package.json package-lock.json* ./
-RUN npm ci --ignore-scripts
+# The build stage needs TypeScript/@types (devDependencies). Some builders
+# (e.g. Coolify) inject NODE_ENV=production as a build-arg, which makes `npm ci`
+# omit devDependencies and breaks `tsc` with "Cannot find type definition file
+# for 'node'". Force dev deps in this stage; the runtime stage prunes them.
+RUN npm ci --ignore-scripts --include=dev
 
 COPY tsconfig.json ./
 COPY prisma ./prisma
