@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 env:
-  NODE_VERSION: "22"
+  NODE_VERSION: "20"
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
   REDIS_URL: redis://localhost:6379
   JWT_SECRET: ci-only-secret-not-for-production-0000000000000000
