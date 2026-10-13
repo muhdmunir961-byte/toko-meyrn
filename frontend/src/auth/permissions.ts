@@ -35,6 +35,25 @@ export function filterNav(
   return items.filter((item) => canSeeItem(item, session));
 }
 
+/**
+ * Resolve which nav item corresponds to the current pathname, so the app bar can
+ * show the correct page title (previously it always showed the first item).
+ *
+ * Matching rules:
+ *  - an exact match (`/dash`) or a nested-path match (`/dash/orders`) both count;
+ *  - when several items match, the LONGEST `to` wins so a child route is never
+ *    shadowed by its parent (e.g. `/dash/orders` beats `/dash`).
+ */
+export function resolveActiveNavItem(
+  items: readonly NavItem[],
+  pathname: string,
+): NavItem | undefined {
+  const matches = items.filter(
+    (item) => pathname === item.to || pathname.startsWith(`${item.to}/`),
+  );
+  return matches.sort((a, b) => b.to.length - a.to.length)[0];
+}
+
 /** Full dashboard navigation with role gating applied. */
 export const DASHBOARD_NAV: readonly NavItem[] = [
   { key: 'overview', label: 'Overview', to: '/dash', auth: true, icon: 'grid' },

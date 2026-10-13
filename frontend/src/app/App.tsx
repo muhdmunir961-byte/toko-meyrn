@@ -15,6 +15,7 @@ import { ShowcasePage } from '../pages/ShowcasePage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { PlaceholderPage } from '../pages/PlaceholderPage';
 import { OrdersPage } from '../pages/OrdersPage';
+import { ResellersPage } from '../pages/ResellersPage';
 import { CatalogPage } from '../pages/CatalogPage';
 import { PricingPage } from '../pages/PricingPage';
 import { ProvidersPage } from '../pages/ProvidersPage';
@@ -100,7 +101,7 @@ export function App() {
                     path="resellers"
                     element={
                       <RequireRole roles={[...TENANT_ROLES]}>
-                        <PlaceholderPage title="Resellers" />
+                        <ResellersPage />
                       </RequireRole>
                     }
                   />

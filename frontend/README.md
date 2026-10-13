@@ -168,6 +168,7 @@ Routes under `/dash/*` (authenticated, OWNER/STAFF):
 | `/dash/catalog` | Product catalog management | `GET/POST /seller/products` |
 | `/dash/pricing` | Pricing & margin management (confirm-gated) | `GET/POST /seller/pricing/rules` |
 | `/dash/providers` | Provider availability & routing visibility | `GET /seller/providers`, `POST /seller/providers/:id/test` |
+| `/dash/resellers` | Reseller hierarchy management (OWNER/STAFF) | `GET/POST /seller/resellers`, `PATCH /seller/resellers/:id`, `POST /seller/resellers/:id/suspend` |
 | `/dash/analytics` | Revenue & order analytics | `/seller/analytics/advanced|products|resellers` |
 | `/dash/settings` | Store settings (branding) | `GET/PATCH /seller/branding` |
 | `/dash/alerts` | Notifications & operational alerts | `GET /seller/webhook-deliveries`, `POST .../replay` |
@@ -351,6 +352,11 @@ Results land in `screenshots/` with a machine-readable
 
 - All API calls use **relative same-origin URLs** (`/api/v1/...`) because the
   backend sets `origin: false` CORS. In dev, Vite proxies `/api`.
+- **Authenticated requests attach the session bearer token automatically.** The
+  fetch wrapper (`src/api/client.ts`) pulls the current token via
+  `getAccessToken()` unless a caller passes an explicit `token`. Without this
+  every `/seller/*` call is rejected with `401 authentication required` (the
+  Playwright suites missed it because they intercept routes).
 - Only endpoints verified in the F0 audit are wired (`/auth/login`,
   `/auth/register`). No `/auth/me`, refresh, or logout contract exists yet.
 - The JWT is decoded (not verified) client-side for UI hints only; the server

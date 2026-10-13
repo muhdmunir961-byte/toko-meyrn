@@ -1,4 +1,5 @@
 import { ApiError, networkError, toApiError } from './errors';
+import { getAccessToken } from '../auth/session';
 
 /**
  * Thin, typed fetch wrapper. Same-origin relative URLs only — the backend
@@ -41,9 +42,15 @@ export async function request<T>(
     timeoutMs = 15000,
   } = opts;
 
+  // Authenticated requests must carry the session bearer token. Callers may
+  // still pass an explicit `token` (e.g. a scoped API key); otherwise the
+  // current session token is attached automatically. Without this, every
+  // `/seller/*` call is rejected with 401 "authentication required".
+  const authToken = token ?? getAccessToken() ?? undefined;
+
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...authHeaders(token),
+    ...authHeaders(authToken),
   };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
