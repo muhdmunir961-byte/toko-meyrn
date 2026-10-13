@@ -4,6 +4,13 @@ Panduan untuk deploy backend ke Coolify menggunakan **satu Dockerfile multi-stag
 yang sedia ada. Dua service berasingan (API + Worker) guna **image yang sama**,
 cuma **command** yang berbeza.
 
+## Status Prisma (kemas kini)
+
+- Prisma **6.19.0** (sepadan prisma/client/engines), 2 dep wasm pencemar dibuang.
+- `prisma validate`/`generate` gagal dalam **code-server** (isu WASM runtime
+  container, BUKAN kod). Ia **AKAN berjaya dalam Docker `node:22-alpine`**.
+- Pengesahan sebenar mesti dibuat di sini (Docker build), bukan code-server.
+
 ## Fakta yang disahkan (dari kod)
 
 | Perkara | Nilai |
@@ -15,6 +22,17 @@ cuma **command** yang berbeza.
 | Port API | 3000 |
 | Pangkalan data | PostgreSQL (private network Coolify) |
 | Queue | Redis (BullMQ, 6 queue) |
+
+## Langkah bina & sahkan (di Coolify/VPS)
+
+```bash
+cd /path/ke/backend
+docker build -t topup-api .     # jalankan prisma generate + npm run build
+docker images | grep topup-api  # sahkan image wujud (build hijau)
+```
+
+Jika build hijau → backend **boleh dibina**. Ini pengesahan sebenar yang
+code-server tak dapat beri.
 
 ## 1. Dockerfile (TIADA perubahan diperlukan)
 
