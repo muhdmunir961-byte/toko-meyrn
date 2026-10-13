@@ -31,7 +31,7 @@ const webhookDispatch = createWorker('webhookDispatch', async job => {
   const outbox = await db.outboxEvent.findUnique({ where: { id: outboxEventId } });
   if (!outbox || outbox.status === 'DISPATCHED') return;
   const endpoints = await db.webhookEndpoint.findMany({ where: { tenantId: outbox.tenantId, active: true, events: { has: outbox.eventType } } });
-  const event = await db.webhookEvent.create({ data: { tenantId: outbox.tenantId, eventType: outbox.eventType, payload: outbox.payload } });
+  const event = await db.webhookEvent.create({ data: { tenantId: outbox.tenantId, eventType: outbox.eventType, payload: outbox.payload as never } });
   for (const endpoint of endpoints) {
     const existing = await db.webhookDelivery.findUnique({ where: { endpointId_eventId: { endpointId: endpoint.id, eventId: event.id } } });
     if (existing?.status === 'DELIVERED' || existing?.status === 'DEAD_LETTER') continue;

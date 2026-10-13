@@ -1,88 +1,1025 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql" url = env("DATABASE_URL") }
-enum Role { SUPER_ADMIN OWNER STAFF CUSTOMER }
-enum OrderStatus { CREATED AWAITING_PAYMENT PAYMENT_CONFIRMED QUEUED PROCESSING SUCCESS FAILED EXPIRED CANCELLED MANUAL_REVIEW }
-enum PaymentStatus { PENDING CONFIRMED FAILED EXPIRED }
-enum MarkupType { FIXED PERCENTAGE MANUAL }
-enum ProviderAttemptState { NOT_SUBMITTED SUBMISSION_IN_PROGRESS ACCEPTED PENDING SUCCESS FAILED REJECTED UNKNOWN MANUAL_REVIEW }
-enum RoutingStrategy { MANUAL PRIORITY LOWEST_COST HEALTH_BASED }
-enum WeightedRoutingStrategy { MANUAL PRIORITY LOWEST_COST HEALTH_BASED WEIGHTED_SCORE }
-enum AIWorkflowState { CREATED QUEUED RUNNING WAITING_FOR_TOOL WAITING_FOR_APPROVAL COMPLETED FAILED CANCELLED }
-enum AIWorkflowType { CUSTOMER_SUPPORT SELLER_ANALYTICS PROVIDER_DOCUMENTATION PROVIDER_MAPPING SUPPORT_ESCALATION }
-enum AIProposalState { DRAFT GENERATED VALIDATING TESTING PENDING_APPROVAL APPROVED ACTIVATED VALIDATION_FAILED TEST_FAILED REJECTED }
-enum ResellerStatus { INVITED ACTIVE SUSPENDED }
-enum CommissionState { PENDING ELIGIBLE APPROVED SETTLED REVERSED CANCELLED DISPUTED }
-enum DomainState { PENDING VERIFYING VERIFIED PROVISIONING ACTIVE FAILED SUSPENDED EXPIRED }
-enum RiskAction { ALLOW FLAG REQUIRE_REVIEW BLOCK }
-enum RiskCategory { PAYMENT_ATTEMPT DUPLICATE_ORDER ORDER_FREQUENCY TRANSACTION_BURST API_KEY_ACTIVITY WEBHOOK_FAILURE PROVIDER_ANOMALY RESELLER_PATTERN }
-enum SubscriptionStatus { ACTIVE PAST_DUE GRACE_EXPIRED SUSPENDED CANCELLED }
-model User { id String @id @default(cuid()) email String @unique passwordHash String role Role @default(CUSTOMER) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt memberships TenantMember[] orders Order[] aiConversations AIConversation[] resellerProfiles Reseller[] }
-model Tenant { id String @id @default(cuid()) name String stores Store[] members TenantMember[] products SellerProduct[] orders Order[] pricingRules SellerPricingRule[] providerConfigurations ProviderConfiguration[] routingRules ProviderRoutingRule[] apiKeys ExternalApiKey[] idempotencyRecords ApiIdempotencyRecord[] webhookEndpoints WebhookEndpoint[] webhookEvents WebhookEvent[] whatsAppIntegrations WhatsAppIntegration[] paymentGateways PaymentGatewayConfiguration[] outboxEvents OutboxEvent[] aiProviderConfigurations AIProviderConfiguration[] aiConversations AIConversation[] aiUsageRecords AIUsageRecord[] aiQuotas AIQuota[] aiWorkflows AIWorkflow[] aiToolExecutions AIToolExecution[] knowledgeDocuments KnowledgeDocument[] knowledgeChunks KnowledgeChunk[] providerDocumentations ProviderDocumentation[] providerMappingProposals ProviderMappingProposal[] aiSupportTickets AISupportTicket[] aiIncidentLogs AIIncidentLog[] resellers Reseller[] resellerPricingRules ResellerPricingRule[] promotionalPricingRules PromotionalPricingRule[] categoryPricingRules CategoryPricingRule[] commissions ResellerCommission[] commissionLedger CommissionLedgerEntry[] storeDomains StoreDomain[] storeBranding StoreBranding? providerRoutingPolicies ProviderRoutingPolicy[] fraudRiskEvents FraudRiskEvent[] fraudRules FraudRule[] subscriptions Subscription[] subscriptionUsages SubscriptionUsage[] subscriptionInvoices SubscriptionInvoice[] platformMetrics PlatformMetric[] operationalIncidents OperationalIncident[] analyticsSnapshots AnalyticsSnapshot[] createdAt DateTime @default(now()) updatedAt DateTime @updatedAt }
-model TenantMember { tenantId String userId String role Role tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) user User @relation(fields:[userId],references:[id],onDelete:Cascade) @@id([tenantId,userId]) }
-model Store { id String @id @default(cuid()) tenantId String name String slug String @unique active Boolean @default(true) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) branding StoreBranding? domains StoreDomain[] @@index([tenantId]) }
-model Category { id String @id @default(cuid()) name String @unique products MasterProduct[] categoryPricingRules CategoryPricingRule[] }
-model MasterProduct { id String @id @default(cuid()) categoryId String name String sku String @unique costMinor Int active Boolean @default(true) category Category @relation(fields:[categoryId],references:[id]) sellerProducts SellerProduct[] resellerPricingRules ResellerPricingRule[] promotionalPricingRules PromotionalPricingRule[] }
-model SellerProduct { id String @id @default(cuid()) tenantId String masterProductId String active Boolean @default(true) manualPriceMinor Int? markupType MarkupType? markupValue Int? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) masterProduct MasterProduct @relation(fields:[masterProductId],references:[id]) @@unique([tenantId,masterProductId]) @@index([tenantId]) }
-model SellerPricingRule { id String @id @default(cuid()) tenantId String markupType MarkupType markupValue Int tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) }
-model Order { id String @id @default(cuid()) tenantId String customerId String? resellerId String? status OrderStatus @default(CREATED) totalMinor Int currency String @default("IDR") idempotencyKey String tenant Tenant @relation(fields:[tenantId],references:[id]) customer User? @relation(fields:[customerId],references:[id]) reseller Reseller? @relation(fields:[resellerId],references:[id]) items OrderItem[] events OrderEvent[] payment Payment? providerTransaction ProviderTransaction? providerAttempts ProviderAttempt[] commissions ResellerCommission[] @@unique([tenantId,idempotencyKey]) @@index([tenantId,createdAt]) @@index([resellerId]) createdAt DateTime @default(now()) }
-model OrderItem { id String @id @default(cuid()) orderId String productId String quantity Int unitPriceMinor Int costMinor Int order Order @relation(fields:[orderId],references:[id],onDelete:Cascade) product MasterProduct @relation(fields:[productId],references:[id]) }
-model OrderEvent { id String @id @default(cuid()) orderId String status OrderStatus metadata Json? createdAt DateTime @default(now()) order Order @relation(fields:[orderId],references:[id],onDelete:Cascade) }
-model Payment { id String @id @default(cuid()) orderId String @unique status PaymentStatus @default(PENDING) providerReference String? order Order @relation(fields:[orderId],references:[id]) attempts PaymentAttempt[] }
-model PaymentAttempt { id String @id @default(cuid()) paymentId String status String createdAt DateTime @default(now()) payment Payment @relation(fields:[paymentId],references:[id],onDelete:Cascade) }
-model ProviderTransaction { id String @id @default(cuid()) orderId String @unique status String providerReference String? order Order @relation(fields:[orderId],references:[id]) }
-model SubscriptionPlan { id String @id @default(cuid()) name String @unique monthlyPriceMinor Int active Boolean @default(true) entitlements PlanEntitlement[] subscriptions Subscription[] usages SubscriptionUsage[] invoices SubscriptionInvoice[] }
-model PlanEntitlement { id String @id @default(cuid()) planId String feature String limit Int? plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade) @@unique([planId,feature]) }
-model Subscription { id String @id @default(cuid()) tenantId String planId String status SubscriptionStatus @default(ACTIVE) graceEndsAt DateTime? suspendedAt DateTime? tenant Tenant @relation(fields:[tenantId],references:[id]) plan SubscriptionPlan @relation(fields:[planId],references:[id]) usages SubscriptionUsage[] invoices SubscriptionInvoice[] @@index([tenantId,status]) }
-model ProviderConfiguration { id String @id @default(cuid()) tenantId String providerType String label String enabled Boolean @default(false) priority Int @default(100) credentialsCiphertext String? credentialsIv String? credentialsTag String? credentialVersion Int @default(1) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) attempts ProviderAttempt[] health ProviderHealth? mappings ProviderProduct[] syncLogs ProviderSyncLog[] routingMetrics ProviderRoutingMetric[] healthEvents ProviderHealthEvent[] @@index([tenantId,enabled,priority]) }
-model ProviderProduct { id String @id @default(cuid()) providerId String masterProductId String providerCode String purchaseCostMinor Int? active Boolean @default(true) provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade) masterProduct MasterProduct @relation(fields:[masterProductId],references:[id]) @@unique([providerId,providerCode]) @@unique([providerId,masterProductId]) }
-model ProviderAttempt { id String @id @default(cuid()) orderId String providerId String state ProviderAttemptState @default(NOT_SUBMITTED) idempotencyKey String providerReference String? errorCode String? submittedAt DateTime? completedAt DateTime? order Order @relation(fields:[orderId],references:[id],onDelete:Cascade) provider ProviderConfiguration @relation(fields:[providerId],references:[id]) @@unique([providerId,idempotencyKey]) @@index([orderId]) }
-model ProviderHealth { id String @id @default(cuid()) providerId String @unique status String @default("CLOSED") failureCount Int @default(0) openedAt DateTime? lastCheckedAt DateTime? provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade) }
-model ProviderRoutingRule { id String @id @default(cuid()) tenantId String strategy RoutingStrategy @default(PRIORITY) masterProductId String? preferredProviderId String? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId]) }
-model ProviderSyncLog { id String @id @default(cuid()) providerId String status String records Int @default(0) errorMessage String? startedAt DateTime @default(now()) finishedAt DateTime? provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade) }
-model ExternalApiKey { id String @id @default(cuid()) tenantId String resellerId String? name String keyPrefix String keyHash String scopes String[] expiresAt DateTime? revokedAt DateTime? lastUsedAt DateTime? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) reseller Reseller? @relation(fields:[resellerId],references:[id]) @@unique([keyHash]) @@index([tenantId,revokedAt]) @@index([resellerId]) }
-model ApiIdempotencyRecord { id String @id @default(cuid()) tenantId String key String requestHash String statusCode Int response Json createdAt DateTime @default(now()) expiresAt DateTime? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@unique([tenantId,key]) }
-model WebhookEndpoint { id String @id @default(cuid()) tenantId String url String secretCiphertext String secretIv String secretTag String active Boolean @default(true) events String[] createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) deliveries WebhookDelivery[] @@index([tenantId,active]) }
-model WebhookEvent { id String @id @default(cuid()) tenantId String eventType String payload Json createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) deliveries WebhookDelivery[] @@index([tenantId,createdAt]) }
-model WebhookDelivery { id String @id @default(cuid()) endpointId String eventId String status String @default("PENDING") attemptCount Int @default(0) nextAttemptAt DateTime? lastError String? deliveredAt DateTime? endpoint WebhookEndpoint @relation(fields:[endpointId],references:[id],onDelete:Cascade) event WebhookEvent @relation(fields:[eventId],references:[id],onDelete:Cascade) @@unique([endpointId,eventId]) }
-model WhatsAppIntegration { id String @id @default(cuid()) tenantId String connectionType String enabled Boolean @default(false) credentialsCiphertext String? credentialsIv String? credentialsTag String? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) messages WhatsAppMessage[] @@unique([tenantId,connectionType]) }
-model WhatsAppMessage { id String @id @default(cuid()) integrationId String eventType String recipient String payload Json status String @default("PENDING") attempts Int @default(0) providerReference String? createdAt DateTime @default(now()) integration WhatsAppIntegration @relation(fields:[integrationId],references:[id],onDelete:Cascade) }
-model PaymentGatewayConfiguration { id String @id @default(cuid()) tenantId String gatewayType String enabled Boolean @default(false) credentialsCiphertext String? credentialsIv String? credentialsTag String? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@unique([tenantId,gatewayType]) }
-model PaymentGatewayEvent { id String @id @default(cuid()) paymentId String? gatewayType String externalEventId String payload Json createdAt DateTime @default(now()) @@unique([gatewayType,externalEventId]) }
-model OutboxEvent { id String @id @default(cuid()) tenantId String eventType String aggregateId String payload Json status String @default("PENDING") attempts Int @default(0) availableAt DateTime @default(now()) createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([status,availableAt]) }
-model AIProviderConfiguration { id String @id @default(cuid()) tenantId String name String baseUrl String model String encryptedApiKey String? enabled Boolean @default(false) capabilities Json? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@unique([tenantId,name]) }
-model AIConversation { id String @id @default(cuid()) tenantId String customerId String? channel String createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) customer User? @relation(fields:[customerId],references:[id]) messages AIMessage[] @@index([tenantId,updatedAt]) }
-model AIMessage { id String @id @default(cuid()) conversationId String role String content String trusted Boolean @default(false) createdAt DateTime @default(now()) conversation AIConversation @relation(fields:[conversationId],references:[id],onDelete:Cascade) }
-model AIUsageRecord { id String @id @default(cuid()) tenantId String userId String? model String workflow String inputTokens Int @default(0) outputTokens Int @default(0) totalTokens Int @default(0) estimatedCostMinor Int @default(0) latencyMs Int? status String createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId,createdAt]) }
-model AIQuota { id String @id @default(cuid()) tenantId String periodStart DateTime periodEnd DateTime tokenLimit Int requestLimit Int tokensReserved Int @default(0) requestsUsed Int @default(0) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@unique([tenantId,periodStart]) }
-model AIWorkflow { id String @id @default(cuid()) tenantId String initiatedById String? type AIWorkflowType state AIWorkflowState @default(CREATED) result Json? errorMessage String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) steps AIWorkflowStep[] @@index([tenantId,createdAt]) }
-model AIWorkflowStep { id String @id @default(cuid()) workflowId String name String state String input Json? output Json? createdAt DateTime @default(now()) workflow AIWorkflow @relation(fields:[workflowId],references:[id],onDelete:Cascade) }
-model AIToolExecution { id String @id @default(cuid()) workflowId String? tenantId String toolName String authorized Boolean input Json output Json? errorMessage String? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id]) }
-model KnowledgeDocument { id String @id @default(cuid()) tenantId String title String source String contentHash String content String active Boolean @default(true) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) chunks KnowledgeChunk[] @@unique([tenantId,contentHash]) @@index([tenantId,active]) }
-model KnowledgeChunk { id String @id @default(cuid()) documentId String tenantId String ordinal Int content String document KnowledgeDocument @relation(fields:[documentId],references:[id],onDelete:Cascade) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId]) }
-model ProviderDocumentation { id String @id @default(cuid()) tenantId String sourceUrl String contentHash String sanitizedContent String status String @default("SUBMITTED") createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) }
-model ProviderMappingProposal { id String @id @default(cuid()) tenantId String documentationId String? providerType String state AIProposalState @default(DRAFT) proposal Json validationResult Json? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) revisions ProviderMappingRevision[] approvals IntegrationApproval[] }
-model ProviderMappingRevision { id String @id @default(cuid()) proposalId String version Int mapping Json createdAt DateTime @default(now()) proposal ProviderMappingProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade) @@unique([proposalId,version]) }
-model IntegrationApproval { id String @id @default(cuid()) proposalId String reviewerId String decision String reason String? createdAt DateTime @default(now()) proposal ProviderMappingProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade) }
-model AISupportTicket { id String @id @default(cuid()) tenantId String customerId String? conversationId String? status String @default("OPEN") subject String description String createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) }
-model AIIncidentLog { id String @id @default(cuid()) tenantId String category String severity String details Json createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id]) }
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  STAFF
+  CUSTOMER
+}
+enum OrderStatus {
+  CREATED
+  AWAITING_PAYMENT
+  PAYMENT_CONFIRMED
+  QUEUED
+  PROCESSING
+  SUCCESS
+  FAILED
+  EXPIRED
+  CANCELLED
+  MANUAL_REVIEW
+}
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  EXPIRED
+}
+enum MarkupType {
+  FIXED
+  PERCENTAGE
+  MANUAL
+}
+enum ProviderAttemptState {
+  NOT_SUBMITTED
+  SUBMISSION_IN_PROGRESS
+  ACCEPTED
+  PENDING
+  SUCCESS
+  FAILED
+  REJECTED
+  UNKNOWN
+  MANUAL_REVIEW
+}
+enum RoutingStrategy {
+  MANUAL
+  PRIORITY
+  LOWEST_COST
+  HEALTH_BASED
+}
+enum WeightedRoutingStrategy {
+  MANUAL
+  PRIORITY
+  LOWEST_COST
+  HEALTH_BASED
+  WEIGHTED_SCORE
+}
+enum AIWorkflowState {
+  CREATED
+  QUEUED
+  RUNNING
+  WAITING_FOR_TOOL
+  WAITING_FOR_APPROVAL
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+enum AIWorkflowType {
+  CUSTOMER_SUPPORT
+  SELLER_ANALYTICS
+  PROVIDER_DOCUMENTATION
+  PROVIDER_MAPPING
+  SUPPORT_ESCALATION
+}
+enum AIProposalState {
+  DRAFT
+  GENERATED
+  VALIDATING
+  TESTING
+  PENDING_APPROVAL
+  APPROVED
+  ACTIVATED
+  VALIDATION_FAILED
+  TEST_FAILED
+  REJECTED
+}
+enum ResellerStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+enum CommissionState {
+  PENDING
+  ELIGIBLE
+  APPROVED
+  SETTLED
+  REVERSED
+  CANCELLED
+  DISPUTED
+}
+enum DomainState {
+  PENDING
+  VERIFYING
+  VERIFIED
+  PROVISIONING
+  ACTIVE
+  FAILED
+  SUSPENDED
+  EXPIRED
+}
+enum RiskAction {
+  ALLOW
+  FLAG
+  REQUIRE_REVIEW
+  BLOCK
+}
+enum RiskCategory {
+  PAYMENT_ATTEMPT
+  DUPLICATE_ORDER
+  ORDER_FREQUENCY
+  TRANSACTION_BURST
+  API_KEY_ACTIVITY
+  WEBHOOK_FAILURE
+  PROVIDER_ANOMALY
+  RESELLER_PATTERN
+}
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  GRACE_EXPIRED
+  SUSPENDED
+  CANCELLED
+}
+model User {
+  id String @id @default(cuid())
+  email String @unique
+  passwordHash String
+  role Role @default(CUSTOMER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  memberships TenantMember[]
+  orders Order[]
+  aiConversations AIConversation[]
+  resellerProfiles Reseller[]
+}
+model Tenant {
+  id String @id @default(cuid())
+  name String
+  stores Store[]
+  members TenantMember[]
+  products SellerProduct[]
+  orders Order[]
+  pricingRules SellerPricingRule[]
+  providerConfigurations ProviderConfiguration[]
+  routingRules ProviderRoutingRule[]
+  apiKeys ExternalApiKey[]
+  idempotencyRecords ApiIdempotencyRecord[]
+  webhookEndpoints WebhookEndpoint[]
+  webhookEvents WebhookEvent[]
+  whatsAppIntegrations WhatsAppIntegration[]
+  paymentGateways PaymentGatewayConfiguration[]
+  outboxEvents OutboxEvent[]
+  aiProviderConfigurations AIProviderConfiguration[]
+  aiConversations AIConversation[]
+  aiUsageRecords AIUsageRecord[]
+  aiQuotas AIQuota[]
+  aiWorkflows AIWorkflow[]
+  aiToolExecutions AIToolExecution[]
+  knowledgeDocuments KnowledgeDocument[]
+  knowledgeChunks KnowledgeChunk[]
+  providerDocumentations ProviderDocumentation[]
+  providerMappingProposals ProviderMappingProposal[]
+  aiSupportTickets AISupportTicket[]
+  aiIncidentLogs AIIncidentLog[]
+  resellers Reseller[]
+  resellerPricingRules ResellerPricingRule[]
+  promotionalPricingRules PromotionalPricingRule[]
+  categoryPricingRules CategoryPricingRule[]
+  commissions ResellerCommission[]
+  commissionLedger CommissionLedgerEntry[]
+  storeDomains StoreDomain[]
+  providerRoutingPolicies ProviderRoutingPolicy[]
+  providerRoutingMetrics ProviderRoutingMetric[]
+  providerHealthEvents ProviderHealthEvent[]
+  fraudRiskEvents FraudRiskEvent[]
+  fraudRules FraudRule[]
+  subscriptions Subscription[]
+  subscriptionUsages SubscriptionUsage[]
+  subscriptionInvoices SubscriptionInvoice[]
+  platformMetrics PlatformMetric[]
+  operationalIncidents OperationalIncident[]
+  analyticsSnapshots AnalyticsSnapshot[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model TenantMember {
+  tenantId String
+  userId String
+  role Role
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  @@id([tenantId,userId])
+}
+model Store {
+  id String @id @default(cuid())
+  tenantId String
+  name String
+  slug String @unique
+  active Boolean @default(true)
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  branding StoreBranding?
+  domains StoreDomain[]
+  @@index([tenantId])
+}
+model Category {
+  id String @id @default(cuid())
+  name String @unique
+  products MasterProduct[]
+  categoryPricingRules CategoryPricingRule[]
+}
+model MasterProduct {
+  id String @id @default(cuid())
+  categoryId String
+  name String
+  sku String @unique
+  costMinor Int
+  active Boolean @default(true)
+  category Category @relation(fields:[categoryId],references:[id])
+  sellerProducts SellerProduct[]
+  orderItems OrderItem[]
+  providerProducts ProviderProduct[]
+  resellerPricingRules ResellerPricingRule[]
+  promotionalPricingRules PromotionalPricingRule[]
+}
+model SellerProduct {
+  id String @id @default(cuid())
+  tenantId String
+  masterProductId String
+  active Boolean @default(true)
+  manualPriceMinor Int?
+  markupType MarkupType?
+  markupValue Int?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  masterProduct MasterProduct @relation(fields:[masterProductId],references:[id])
+  @@unique([tenantId,masterProductId])
+  @@index([tenantId])
+}
+model SellerPricingRule {
+  id String @id @default(cuid())
+  tenantId String
+  markupType MarkupType
+  markupValue Int
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+}
+model Order {
+  id String @id @default(cuid())
+  tenantId String
+  customerId String?
+  resellerId String?
+  status OrderStatus @default(CREATED)
+  totalMinor Int
+  currency String @default("IDR")
+  idempotencyKey String
+  tenant Tenant @relation(fields:[tenantId],references:[id])
+  customer User? @relation(fields:[customerId],references:[id])
+  reseller Reseller? @relation(fields:[resellerId],references:[id])
+  items OrderItem[]
+  events OrderEvent[]
+  payment Payment?
+  providerTransaction ProviderTransaction?
+  providerAttempts ProviderAttempt[]
+  commissions ResellerCommission[]
+  @@unique([tenantId,idempotencyKey])
+  @@index([tenantId,createdAt])
+  @@index([resellerId])
+  createdAt DateTime @default(now())
+}
+model OrderItem {
+  id String @id @default(cuid())
+  orderId String
+  productId String
+  quantity Int
+  unitPriceMinor Int
+  costMinor Int
+  order Order @relation(fields:[orderId],references:[id],onDelete:Cascade)
+  product MasterProduct @relation(fields:[productId],references:[id])
+}
+model OrderEvent {
+  id String @id @default(cuid())
+  orderId String
+  status OrderStatus
+  metadata Json?
+  createdAt DateTime @default(now())
+  order Order @relation(fields:[orderId],references:[id],onDelete:Cascade)
+}
+model Payment {
+  id String @id @default(cuid())
+  orderId String @unique
+  status PaymentStatus @default(PENDING)
+  providerReference String?
+  order Order @relation(fields:[orderId],references:[id])
+  attempts PaymentAttempt[]
+}
+model PaymentAttempt {
+  id String @id @default(cuid())
+  paymentId String
+  status String
+  createdAt DateTime @default(now())
+  payment Payment @relation(fields:[paymentId],references:[id],onDelete:Cascade)
+}
+model ProviderTransaction {
+  id String @id @default(cuid())
+  orderId String @unique
+  status String
+  providerReference String?
+  order Order @relation(fields:[orderId],references:[id])
+}
+model SubscriptionPlan {
+  id String @id @default(cuid())
+  name String @unique
+  monthlyPriceMinor Int
+  active Boolean @default(true)
+  entitlements PlanEntitlement[]
+  subscriptions Subscription[]
+  usages SubscriptionUsage[]
+  invoices SubscriptionInvoice[]
+}
+model PlanEntitlement {
+  id String @id @default(cuid())
+  planId String
+  feature String
+  limit Int?
+  plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade)
+  @@unique([planId,feature])
+}
+model Subscription {
+  id String @id @default(cuid())
+  tenantId String
+  planId String
+  status SubscriptionStatus @default(ACTIVE)
+  graceEndsAt DateTime?
+  suspendedAt DateTime?
+  tenant Tenant @relation(fields:[tenantId],references:[id])
+  plan SubscriptionPlan @relation(fields:[planId],references:[id])
+  @@index([tenantId,status])
+}
+model ProviderConfiguration {
+  id String @id @default(cuid())
+  tenantId String
+  providerType String
+  label String
+  enabled Boolean @default(false)
+  priority Int @default(100)
+  credentialsCiphertext String?
+  credentialsIv String?
+  credentialsTag String?
+  credentialVersion Int @default(1)
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  attempts ProviderAttempt[]
+  health ProviderHealth?
+  mappings ProviderProduct[]
+  syncLogs ProviderSyncLog[]
+  routingMetrics ProviderRoutingMetric[]
+  healthEvents ProviderHealthEvent[]
+  @@index([tenantId,enabled,priority])
+}
+model ProviderProduct {
+  id String @id @default(cuid())
+  providerId String
+  masterProductId String
+  providerCode String
+  purchaseCostMinor Int?
+  active Boolean @default(true)
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade)
+  masterProduct MasterProduct @relation(fields:[masterProductId],references:[id])
+  @@unique([providerId,providerCode])
+  @@unique([providerId,masterProductId])
+}
+model ProviderAttempt {
+  id String @id @default(cuid())
+  orderId String
+  providerId String
+  state ProviderAttemptState @default(NOT_SUBMITTED)
+  idempotencyKey String
+  providerReference String?
+  errorCode String?
+  submittedAt DateTime?
+  completedAt DateTime?
+  order Order @relation(fields:[orderId],references:[id],onDelete:Cascade)
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id])
+  @@unique([providerId,idempotencyKey])
+  @@index([orderId])
+}
+model ProviderHealth {
+  id String @id @default(cuid())
+  providerId String @unique
+  status String @default("CLOSED")
+  failureCount Int @default(0)
+  openedAt DateTime?
+  lastCheckedAt DateTime?
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade)
+}
+model ProviderRoutingRule {
+  id String @id @default(cuid())
+  tenantId String
+  strategy RoutingStrategy @default(PRIORITY)
+  masterProductId String?
+  preferredProviderId String?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId])
+}
+model ProviderSyncLog {
+  id String @id @default(cuid())
+  providerId String
+  status String
+  records Int @default(0)
+  errorMessage String?
+  startedAt DateTime @default(now())
+  finishedAt DateTime?
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade)
+}
+model ExternalApiKey {
+  id String @id @default(cuid())
+  tenantId String
+  resellerId String?
+  name String
+  keyPrefix String
+  keyHash String
+  scopes String[]
+  expiresAt DateTime?
+  revokedAt DateTime?
+  lastUsedAt DateTime?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  reseller Reseller? @relation(fields:[resellerId],references:[id])
+  @@unique([keyHash])
+  @@index([tenantId,revokedAt])
+  @@index([resellerId])
+}
+model ApiIdempotencyRecord {
+  id String @id @default(cuid())
+  tenantId String
+  key String
+  requestHash String
+  statusCode Int
+  response Json
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,key])
+}
+model WebhookEndpoint {
+  id String @id @default(cuid())
+  tenantId String
+  url String
+  secretCiphertext String
+  secretIv String
+  secretTag String
+  active Boolean @default(true)
+  events String[]
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  deliveries WebhookDelivery[]
+  @@index([tenantId,active])
+}
+model WebhookEvent {
+  id String @id @default(cuid())
+  tenantId String
+  eventType String
+  payload Json
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  deliveries WebhookDelivery[]
+  @@index([tenantId,createdAt])
+}
+model WebhookDelivery {
+  id String @id @default(cuid())
+  endpointId String
+  eventId String
+  status String @default("PENDING")
+  attemptCount Int @default(0)
+  nextAttemptAt DateTime?
+  lastError String?
+  deliveredAt DateTime?
+  endpoint WebhookEndpoint @relation(fields:[endpointId],references:[id],onDelete:Cascade)
+  event WebhookEvent @relation(fields:[eventId],references:[id],onDelete:Cascade)
+  @@unique([endpointId,eventId])
+}
+model WhatsAppIntegration {
+  id String @id @default(cuid())
+  tenantId String
+  connectionType String
+  enabled Boolean @default(false)
+  credentialsCiphertext String?
+  credentialsIv String?
+  credentialsTag String?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  messages WhatsAppMessage[]
+  @@unique([tenantId,connectionType])
+}
+model WhatsAppMessage {
+  id String @id @default(cuid())
+  integrationId String
+  eventType String
+  recipient String
+  payload Json
+  status String @default("PENDING")
+  attempts Int @default(0)
+  providerReference String?
+  createdAt DateTime @default(now())
+  integration WhatsAppIntegration @relation(fields:[integrationId],references:[id],onDelete:Cascade)
+}
+model PaymentGatewayConfiguration {
+  id String @id @default(cuid())
+  tenantId String
+  gatewayType String
+  enabled Boolean @default(false)
+  credentialsCiphertext String?
+  credentialsIv String?
+  credentialsTag String?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,gatewayType])
+}
+model PaymentGatewayEvent {
+  id String @id @default(cuid())
+  paymentId String?
+  gatewayType String
+  externalEventId String
+  payload Json
+  createdAt DateTime @default(now())
+  @@unique([gatewayType,externalEventId])
+}
+model OutboxEvent {
+  id String @id @default(cuid())
+  tenantId String
+  eventType String
+  aggregateId String
+  payload Json
+  status String @default("PENDING")
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([status,availableAt])
+}
+model AIProviderConfiguration {
+  id String @id @default(cuid())
+  tenantId String
+  name String
+  baseUrl String
+  model String
+  encryptedApiKey String?
+  enabled Boolean @default(false)
+  capabilities Json?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,name])
+}
+model AIConversation {
+  id String @id @default(cuid())
+  tenantId String
+  customerId String?
+  channel String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  customer User? @relation(fields:[customerId],references:[id])
+  messages AIMessage[]
+  @@index([tenantId,updatedAt])
+}
+model AIMessage {
+  id String @id @default(cuid())
+  conversationId String
+  role String
+  content String
+  trusted Boolean @default(false)
+  createdAt DateTime @default(now())
+  conversation AIConversation @relation(fields:[conversationId],references:[id],onDelete:Cascade)
+}
+model AIUsageRecord {
+  id String @id @default(cuid())
+  tenantId String
+  userId String?
+  model String
+  workflow String
+  inputTokens Int @default(0)
+  outputTokens Int @default(0)
+  totalTokens Int @default(0)
+  estimatedCostMinor Int @default(0)
+  latencyMs Int?
+  status String
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId,createdAt])
+}
+model AIQuota {
+  id String @id @default(cuid())
+  tenantId String
+  periodStart DateTime
+  periodEnd DateTime
+  tokenLimit Int
+  requestLimit Int
+  tokensReserved Int @default(0)
+  requestsUsed Int @default(0)
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,periodStart])
+}
+model AIWorkflow {
+  id String @id @default(cuid())
+  tenantId String
+  initiatedById String?
+  type AIWorkflowType
+  state AIWorkflowState @default(CREATED)
+  result Json?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  steps AIWorkflowStep[]
+  @@index([tenantId,createdAt])
+}
+model AIWorkflowStep {
+  id String @id @default(cuid())
+  workflowId String
+  name String
+  state String
+  input Json?
+  output Json?
+  createdAt DateTime @default(now())
+  workflow AIWorkflow @relation(fields:[workflowId],references:[id],onDelete:Cascade)
+}
+model AIToolExecution {
+  id String @id @default(cuid())
+  workflowId String?
+  tenantId String
+  toolName String
+  authorized Boolean
+  input Json
+  output Json?
+  errorMessage String?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id])
+}
+model KnowledgeDocument {
+  id String @id @default(cuid())
+  tenantId String
+  title String
+  source String
+  contentHash String
+  content String
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  chunks KnowledgeChunk[]
+  @@unique([tenantId,contentHash])
+  @@index([tenantId,active])
+}
+model KnowledgeChunk {
+  id String @id @default(cuid())
+  documentId String
+  tenantId String
+  ordinal Int
+  content String
+  document KnowledgeDocument @relation(fields:[documentId],references:[id],onDelete:Cascade)
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId])
+}
+model ProviderDocumentation {
+  id String @id @default(cuid())
+  tenantId String
+  sourceUrl String
+  contentHash String
+  sanitizedContent String
+  status String @default("SUBMITTED")
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+}
+model ProviderMappingProposal {
+  id String @id @default(cuid())
+  tenantId String
+  documentationId String?
+  providerType String
+  state AIProposalState @default(DRAFT)
+  proposal Json
+  validationResult Json?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  revisions ProviderMappingRevision[]
+  approvals IntegrationApproval[]
+}
+model ProviderMappingRevision {
+  id String @id @default(cuid())
+  proposalId String
+  version Int
+  mapping Json
+  createdAt DateTime @default(now())
+  proposal ProviderMappingProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade)
+  @@unique([proposalId,version])
+}
+model IntegrationApproval {
+  id String @id @default(cuid())
+  proposalId String
+  reviewerId String
+  decision String
+  reason String?
+  createdAt DateTime @default(now())
+  proposal ProviderMappingProposal @relation(fields:[proposalId],references:[id],onDelete:Cascade)
+}
+model AISupportTicket {
+  id String @id @default(cuid())
+  tenantId String
+  customerId String?
+  conversationId String?
+  status String @default("OPEN")
+  subject String
+  description String
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+}
+model AIIncidentLog {
+  id String @id @default(cuid())
+  tenantId String
+  category String
+  severity String
+  details Json
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id])
+}
 
-model Reseller { id String @id @default(cuid()) tenantId String parentId String? ownerUserId String? email String name String status ResellerStatus @default(INVITED) commissionRateBps Int @default(0) maxDepth Int @default(0) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) parent Reseller? @relation("ResellerTree", fields:[parentId],references:[id]) children Reseller[] @relation("ResellerTree") owner User? @relation(fields:[ownerUserId],references:[id]) orders Order[] apiKeys ExternalApiKey[] pricingRules ResellerPricingRule[] commissions ResellerCommission[] ledger CommissionLedgerEntry[] @@unique([tenantId,email]) @@index([tenantId,parentId]) @@index([tenantId,status]) }
-model ResellerPricingRule { id String @id @default(cuid()) tenantId String resellerId String markupType MarkupType markupValue Int masterProductId String? minMarginMinor Int? effectiveFrom DateTime? effectiveTo DateTime? active Boolean @default(true) createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) reseller Reseller @relation(fields:[resellerId],references:[id],onDelete:Cascade) masterProduct MasterProduct? @relation(fields:[masterProductId],references:[id]) @@index([tenantId,resellerId,active]) @@index([tenantId,masterProductId]) }
-model PromotionalPricingRule { id String @id @default(cuid()) tenantId String masterProductId String? markupType MarkupType markupValue Int minMarginMinor Int? effectiveFrom DateTime effectiveTo DateTime active Boolean @default(true) createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) masterProduct MasterProduct? @relation(fields:[masterProductId],references:[id]) @@index([tenantId,active]) }
-model CategoryPricingRule { id String @id @default(cuid()) tenantId String categoryId String markupType MarkupType markupValue Int minMarginMinor Int? effectiveFrom DateTime? effectiveTo DateTime? active Boolean @default(true) createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) category Category @relation(fields:[categoryId],references:[id]) @@index([tenantId,categoryId,active]) }
-model ResellerCommission { id String @id @default(cuid()) tenantId String resellerId String state CommissionState @default(PENDING) amountMinor Int orderId String? eligibleAt DateTime? settledAt DateTime? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) reseller Reseller @relation(fields:[resellerId],references:[id],onDelete:Cascade) order Order? @relation(fields:[orderId],references:[id]) ledger CommissionLedgerEntry[] @@index([tenantId,resellerId,state]) @@index([orderId]) @@unique([orderId,resellerId]) }
-model CommissionLedgerEntry { id String @id @default(cuid()) tenantId String commissionId String? resellerId String? kind String amountMinor Int balanceAfterMinor Int? reason String? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) commission ResellerCommission? @relation(fields:[commissionId],references:[id],onDelete:Cascade) reseller Reseller? @relation(fields:[resellerId],references:[id],onDelete:Cascade) @@index([tenantId,createdAt]) @@index([commissionId]) }
-model StoreDomain { id String @id @default(cuid()) tenantId String storeId String domain String @unique state DomainState @default(PENDING) verificationToken String? verificationTokenHash String? verifiedAt DateTime? sslCertificateIssued Boolean @default(false) sslIssuedAt DateTime? lastHealthCheckAt DateTime? healthStatus String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) store Store @relation(fields:[storeId],references:[id],onDelete:Cascade) verifications DomainVerification[] @@index([tenantId,state]) @@index([storeId]) }
-model DomainVerification { id String @id @default(cuid()) domainId String method String token String @unique verifiedAt DateTime? attempts Int @default(0) createdAt DateTime @default(now()) domain StoreDomain @relation(fields:[domainId],references:[id],onDelete:Cascade) @@index([domainId]) }
-model StoreBranding { id String @id @default(cuid()) tenantId String storeId String @unique theme Json supportEmail String? supportPhone String? logoUrl String? faviconUrl String? primaryColor String? secondaryColor String? createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) store Store @relation(fields:[storeId],references:[id],onDelete:Cascade) }
-model ProviderRoutingPolicy { id String @id @default(cuid()) tenantId String strategy WeightedRoutingStrategy @default(PRIORITY) masterProductId String? weights Json? maintenanceMode Boolean @default(false) createdAt DateTime @default(now()) updatedAt DateTime @updatedAt tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId]) }
-model ProviderRoutingMetric { id String @id @default(cuid()) tenantId String providerId String productId String? availabilityScore Int @default(0) reliabilityScore Int @default(0) costScore Int @default(0) latencyMs Int? failureRateBps Int @default(0) observedAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade) @@index([tenantId,providerId]) }
-model ProviderHealthEvent { id String @id @default(cuid()) tenantId String providerId String event String state String? details Json? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade) @@index([tenantId,providerId,createdAt]) }
-model AnalyticsSnapshot { id String @id @default(cuid()) tenantId String periodStart DateTime periodEnd DateTime granularity String kind String metrics Json createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@unique([tenantId,periodStart,kind]) @@index([tenantId,createdAt]) }
-model FraudRule { id String @id @default(cuid()) tenantId String? name String category RiskCategory action RiskAction @default(FLAG) threshold Int enabled Boolean @default(true) createdAt DateTime @default(now()) tenant Tenant? @relation(fields:[tenantId],references:[id],onDelete:Cascade) events FraudRiskEvent[] }
-model FraudRiskEvent { id String @id @default(cuid()) tenantId String? ruleId String? category RiskCategory score Int action RiskAction @default(FLAG) details Json actorId String? orderId String? createdAt DateTime @default(now()) tenant Tenant? @relation(fields:[tenantId],references:[id],onDelete:Cascade) rule FraudRule? @relation(fields:[ruleId],references:[id],onDelete:SetNull) reviews FraudReview[] @@index([tenantId,createdAt]) @@index([action]) }
-model FraudReview { id String @id @default(cuid()) eventId String reviewerId String decision String reason String? createdAt DateTime @default(now()) event FraudRiskEvent @relation(fields:[eventId],references:[id],onDelete:Cascade) @@index([eventId]) }
-model SubscriptionUsage { id String @id @default(cuid()) tenantId String planId String feature String periodStart DateTime periodEnd DateTime usage Int @default(0) limit Int? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade) @@unique([tenantId,feature,periodStart]) @@index([tenantId,planId]) }
-model SubscriptionInvoice { id String @id @default(cuid()) tenantId String planId String status String @default("OPEN") amountMinor Int periodStart DateTime periodEnd DateTime createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade) @@index([tenantId,createdAt]) }
-model OperationalIncident { id String @id @default(cuid()) tenantId String service String severity String title String details Json? resolvedAt DateTime? createdAt DateTime @default(now()) tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId,createdAt]) }
-model PlatformMetric { id String @id @default(cuid()) tenantId String name String value Float timestamp DateTime @default(now()) labels Json? tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade) @@index([tenantId,name,timestamp]) }
+model Reseller {
+  id String @id @default(cuid())
+  tenantId String
+  parentId String?
+  ownerUserId String?
+  email String
+  name String
+  status ResellerStatus @default(INVITED)
+  commissionRateBps Int @default(0)
+  maxDepth Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  parent Reseller? @relation("ResellerTree", fields:[parentId],references:[id])
+  children Reseller[] @relation("ResellerTree")
+  owner User? @relation(fields:[ownerUserId],references:[id])
+  orders Order[]
+  apiKeys ExternalApiKey[]
+  pricingRules ResellerPricingRule[]
+  commissions ResellerCommission[]
+  ledger CommissionLedgerEntry[]
+  @@unique([tenantId,email])
+  @@index([tenantId,parentId])
+  @@index([tenantId,status])
+}
+model ResellerPricingRule {
+  id String @id @default(cuid())
+  tenantId String
+  resellerId String
+  markupType MarkupType
+  markupValue Int
+  masterProductId String?
+  minMarginMinor Int?
+  effectiveFrom DateTime?
+  effectiveTo DateTime?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  reseller Reseller @relation(fields:[resellerId],references:[id],onDelete:Cascade)
+  masterProduct MasterProduct? @relation(fields:[masterProductId],references:[id])
+  @@index([tenantId,resellerId,active])
+  @@index([tenantId,masterProductId])
+}
+model PromotionalPricingRule {
+  id String @id @default(cuid())
+  tenantId String
+  masterProductId String?
+  markupType MarkupType
+  markupValue Int
+  minMarginMinor Int?
+  effectiveFrom DateTime
+  effectiveTo DateTime
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  masterProduct MasterProduct? @relation(fields:[masterProductId],references:[id])
+  @@index([tenantId,active])
+}
+model CategoryPricingRule {
+  id String @id @default(cuid())
+  tenantId String
+  categoryId String
+  markupType MarkupType
+  markupValue Int
+  minMarginMinor Int?
+  effectiveFrom DateTime?
+  effectiveTo DateTime?
+  active Boolean @default(true)
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  category Category @relation(fields:[categoryId],references:[id])
+  @@index([tenantId,categoryId,active])
+}
+model ResellerCommission {
+  id String @id @default(cuid())
+  tenantId String
+  resellerId String
+  state CommissionState @default(PENDING)
+  amountMinor Int
+  orderId String?
+  eligibleAt DateTime?
+  settledAt DateTime?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  reseller Reseller @relation(fields:[resellerId],references:[id],onDelete:Cascade)
+  order Order? @relation(fields:[orderId],references:[id])
+  ledger CommissionLedgerEntry[]
+  @@index([tenantId,resellerId,state])
+  @@index([orderId])
+  @@unique([orderId,resellerId])
+}
+model CommissionLedgerEntry {
+  id String @id @default(cuid())
+  tenantId String
+  commissionId String?
+  resellerId String?
+  kind String
+  amountMinor Int
+  balanceAfterMinor Int?
+  reason String?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  commission ResellerCommission? @relation(fields:[commissionId],references:[id],onDelete:Cascade)
+  reseller Reseller? @relation(fields:[resellerId],references:[id],onDelete:Cascade)
+  @@index([tenantId,createdAt])
+  @@index([commissionId])
+}
+model StoreDomain {
+  id String @id @default(cuid())
+  tenantId String
+  storeId String
+  domain String @unique
+  state DomainState @default(PENDING)
+  verificationToken String?
+  verificationTokenHash String?
+  verifiedAt DateTime?
+  sslCertificateIssued Boolean @default(false)
+  sslIssuedAt DateTime?
+  lastHealthCheckAt DateTime?
+  healthStatus String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  store Store @relation(fields:[storeId],references:[id],onDelete:Cascade)
+  verifications DomainVerification[]
+  @@index([tenantId,state])
+  @@index([storeId])
+}
+model DomainVerification {
+  id String @id @default(cuid())
+  domainId String
+  method String
+  token String @unique
+  verifiedAt DateTime?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+  domain StoreDomain @relation(fields:[domainId],references:[id],onDelete:Cascade)
+  @@index([domainId])
+}
+model StoreBranding {
+  id String @id @default(cuid())
+  tenantId String
+  storeId String @unique
+  theme Json
+  supportEmail String?
+  supportPhone String?
+  logoUrl String?
+  faviconUrl String?
+  primaryColor String?
+  secondaryColor String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  store Store @relation(fields:[storeId],references:[id],onDelete:Cascade)
+}
+model ProviderRoutingPolicy {
+  id String @id @default(cuid())
+  tenantId String
+  strategy WeightedRoutingStrategy @default(PRIORITY)
+  masterProductId String?
+  weights Json?
+  maintenanceMode Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId])
+}
+model ProviderRoutingMetric {
+  id String @id @default(cuid())
+  tenantId String
+  providerId String
+  productId String?
+  availabilityScore Int @default(0)
+  reliabilityScore Int @default(0)
+  costScore Int @default(0)
+  latencyMs Int?
+  failureRateBps Int @default(0)
+  observedAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade)
+  @@index([tenantId,providerId])
+}
+model ProviderHealthEvent {
+  id String @id @default(cuid())
+  tenantId String
+  providerId String
+  event String
+  state String?
+  details Json?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  provider ProviderConfiguration @relation(fields:[providerId],references:[id],onDelete:Cascade)
+  @@index([tenantId,providerId,createdAt])
+}
+model AnalyticsSnapshot {
+  id String @id @default(cuid())
+  tenantId String
+  periodStart DateTime
+  periodEnd DateTime
+  granularity String
+  kind String
+  metrics Json
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,periodStart,kind])
+  @@index([tenantId,createdAt])
+}
+model FraudRule {
+  id String @id @default(cuid())
+  tenantId String?
+  name String
+  category RiskCategory
+  action RiskAction @default(FLAG)
+  threshold Int
+  enabled Boolean @default(true)
+  createdAt DateTime @default(now())
+  tenant Tenant? @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  events FraudRiskEvent[]
+}
+model FraudRiskEvent {
+  id String @id @default(cuid())
+  tenantId String?
+  ruleId String?
+  category RiskCategory
+  score Int
+  action RiskAction @default(FLAG)
+  details Json
+  actorId String?
+  orderId String?
+  createdAt DateTime @default(now())
+  tenant Tenant? @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  rule FraudRule? @relation(fields:[ruleId],references:[id],onDelete:SetNull)
+  reviews FraudReview[]
+  @@index([tenantId,createdAt])
+  @@index([action])
+}
+model FraudReview {
+  id String @id @default(cuid())
+  eventId String
+  reviewerId String
+  decision String
+  reason String?
+  createdAt DateTime @default(now())
+  event FraudRiskEvent @relation(fields:[eventId],references:[id],onDelete:Cascade)
+  @@index([eventId])
+}
+model SubscriptionUsage {
+  id String @id @default(cuid())
+  tenantId String
+  planId String
+  feature String
+  periodStart DateTime
+  periodEnd DateTime
+  usage Int @default(0)
+  limit Int?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade)
+  @@unique([tenantId,feature,periodStart])
+  @@index([tenantId,planId])
+}
+model SubscriptionInvoice {
+  id String @id @default(cuid())
+  tenantId String
+  planId String
+  status String @default("OPEN")
+  amountMinor Int
+  periodStart DateTime
+  periodEnd DateTime
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  plan SubscriptionPlan @relation(fields:[planId],references:[id],onDelete:Cascade)
+  @@index([tenantId,createdAt])
+}
+model OperationalIncident {
+  id String @id @default(cuid())
+  tenantId String
+  service String
+  severity String
+  title String
+  details Json?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId,createdAt])
+}
+model PlatformMetric {
+  id String @id @default(cuid())
+  tenantId String
+  name String
+  value Float
+  timestamp DateTime @default(now())
+  labels Json?
+  tenant Tenant @relation(fields:[tenantId],references:[id],onDelete:Cascade)
+  @@index([tenantId,name,timestamp])
+}

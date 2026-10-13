@@ -8,4 +8,4 @@ export function authorizeTool(name: ToolName, context: ToolContext, input: z.inf
   if (['createSupportTicket','escalateToHuman'].includes(name) && !context.actorId) throw new Error('authenticated actor is required');
   return true;
 }
-export function sanitizeAssistantInput(value: string) { return value.replace(/\b(ignore|disregard)\s+(all|previous)\s+instructions?\b/gi, '[untrusted instruction removed]').slice(0, 4000); }
+export function sanitizeAssistantInput(value: string) { return value.replace(/\b(ignore|disregard)\s+(?:(?:all|previous|prior)\s+)+instructions?\b/gi, '[untrusted instruction removed]').slice(0, 4000); }

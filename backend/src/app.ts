@@ -1,4 +1,13 @@
-import Fastify, { FastifyInstance, FastifyRequest } from 'fastify';
+import Fastify, { FastifyInstance, type FastifyRequest } from 'fastify';
+
+// Helper request type. The helpers only read a few request properties, so we
+// accept a minimal structural type to avoid the HTTP/1 vs HTTP/2 server-type
+// variance across route handlers.
+type AnyFastifyRequest = {
+  jwtVerify: () => Promise<unknown>;
+  user: { tenantId: string; id: string; role: string };
+  headers: { authorization?: string };
+};
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import jwt from '@fastify/jwt';
@@ -33,19 +42,19 @@ const product = z.object({ masterProductId: z.string(), manualPriceMinor: z.numb
 const order = z.object({ items: z.array(z.object({ productId: z.string(), quantity: z.number().int().positive().max(100) })).min(1).max(50) });
 
 declare module '@fastify/jwt' { interface FastifyJWT { user: { id: string; tenantId: string; role: Role } } }
-function auth(request: FastifyRequest) { return request.jwtVerify(); }
-function tenant(request: FastifyRequest) { return request.user.tenantId; }
-async function externalKey(request: FastifyRequest, requiredScope?: string) { const header = request.headers.authorization; if (!header?.startsWith('Bearer ')) throw new Error('missing API key'); const raw = header.slice(7); const key = await db.externalApiKey.findUnique({ where: { keyHash: hashApiKey(raw) } }); if (!key || key.revokedAt || (key.expiresAt && key.expiresAt < new Date())) throw new Error('invalid API key'); if (requiredScope && !key.scopes.includes(requiredScope) && !key.scopes.includes('*')) throw new Error('insufficient API key scope'); await db.externalApiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }); return key; }
+function auth(request: AnyFastifyRequest) { return request.jwtVerify(); }
+function tenant(request: AnyFastifyRequest) { return request.user.tenantId; }
+async function externalKey(request: AnyFastifyRequest, requiredScope?: string) { const header = request.headers.authorization; if (!header?.startsWith('Bearer ')) throw new Error('missing API key'); const raw = header.slice(7); const key = await db.externalApiKey.findUnique({ where: { keyHash: hashApiKey(raw) } }); if (!key || key.revokedAt || (key.expiresAt && key.expiresAt < new Date())) throw new Error('invalid API key'); if (requiredScope && !key.scopes.includes(requiredScope) && !key.scopes.includes('*')) throw new Error('insufficient API key scope'); await db.externalApiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }); return key; }
 
-export async function buildApp(): Promise<FastifyInstance> {
+export async function buildApp() {
   // trustProxy: trust EXACTLY ONE reverse-proxy hop (Cloudflare -> Coolify ->
-  // Caddy/Fastify). This restores the real client IP and https proto from
-  // X-Forwarded-*, while refusing to trust arbitrary forwarded headers from
-  // deeper in the chain. `1` = the single trusted proxy directly in front.
+  // Caddy/Fastify). `true` trusts a single proxy hop, restoring the real client
+  // IP and https proto from X-Forwarded-*, while refusing to trust arbitrary
+  // forwarded headers from deeper in the chain.
   const app = Fastify({
     logger: { level: 'info' },
     bodyLimit: 1024 * 1024,
-    trustProxy: 1,
+    trustProxy: true,
   });
   await app.register(cors, { origin: false }); await app.register(helmet); await app.register(rateLimit, { max: 100, timeWindow: '1 minute' });
   await app.register(jwt, { secret: process.env.JWT_SECRET ?? 'development-only-change-me' });
@@ -137,7 +146,7 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   // Phase 4 — White-label branding
   app.get('/api/v1/seller/branding', async (request, reply) => { await auth(request); const branding = await db.storeBranding.findFirst({ where: { tenantId: tenant(request) } }); if (!branding) return reply.code(404).send({ error: 'branding not configured' }); return branding; });
-  app.patch('/api/v1/seller/branding', async (request, reply) => { try { await auth(request); const input = z.object({ storeId: z.string(), logoUrl: z.string().optional(), faviconUrl: z.string().optional(), primaryColor: z.string().optional(), secondaryColor: z.string().optional(), supportEmail: z.string().optional(), supportPhone: z.string().optional(), theme: z.record(z.unknown()).optional() }).parse(request.body); const store = await db.store.findFirst({ where: { id: input.storeId, tenantId: tenant(request) } }); if (!store) return reply.code(404).send({ error: 'store not found' }); const clean = sanitizeBranding(input); const data = { logoUrl: clean.logoUrl, faviconUrl: clean.faviconUrl, primaryColor: clean.primaryColor, secondaryColor: clean.secondaryColor, supportEmail: clean.supportEmail, supportPhone: clean.supportPhone, theme: clean.theme ?? {} }; const upserted = await db.storeBranding.upsert({ where: { storeId: input.storeId }, update: data, create: { tenantId: tenant(request), storeId: input.storeId, ...data } }); return upserted; } catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : 'branding update failed' }); } });
+  app.patch('/api/v1/seller/branding', async (request, reply) => { try { await auth(request); const input = z.object({ storeId: z.string(), logoUrl: z.string().optional(), faviconUrl: z.string().optional(), primaryColor: z.string().optional(), secondaryColor: z.string().optional(), supportEmail: z.string().optional(), supportPhone: z.string().optional(), theme: z.record(z.unknown()).optional() }).parse(request.body); const store = await db.store.findFirst({ where: { id: input.storeId, tenantId: tenant(request) } }); if (!store) return reply.code(404).send({ error: 'store not found' }); const clean = sanitizeBranding(input); const theme = (clean.theme ?? {}) as never; const data = { logoUrl: clean.logoUrl, faviconUrl: clean.faviconUrl, primaryColor: clean.primaryColor, secondaryColor: clean.secondaryColor, supportEmail: clean.supportEmail, supportPhone: clean.supportPhone, theme }; const upserted = await db.storeBranding.upsert({ where: { storeId: input.storeId }, update: data as never, create: { tenantId: tenant(request), storeId: input.storeId, ...data } as never }); return upserted; } catch (error) { return reply.code(400).send({ error: error instanceof Error ? error.message : 'branding update failed' }); } });
   app.get('/api/v1/public/store/:slug/branding', async (request, reply) => { const store = await db.store.findUnique({ where: { slug: (request.params as { slug: string }).slug } }); if (!store) return reply.code(404).send({ error: 'store not found' }); const branding = await db.storeBranding.findFirst({ where: { storeId: store.id } }); if (!branding) return reply.code(404).send({ error: 'branding not configured' }); return publicBranding({ storeName: store.name, logoUrl: branding.logoUrl ?? undefined, faviconUrl: branding.faviconUrl ?? undefined, primaryColor: branding.primaryColor ?? undefined, secondaryColor: branding.secondaryColor ?? undefined, supportEmail: branding.supportEmail ?? undefined, supportPhone: branding.supportPhone ?? undefined, theme: branding.theme as Record<string, unknown> ?? {} }); });
 
   // Phase 4 — Advanced routing

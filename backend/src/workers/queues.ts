@@ -1,16 +1,16 @@
 import { Queue, Worker } from 'bullmq';
-import IORedis from 'ioredis';
+import { Redis } from 'ioredis';
 
 // Redis connection. `REDIS_PASSWORD` is optional and, when set, is applied even if
 // `REDIS_URL` does not embed credentials (keeps secrets out of URLs/URLs out of logs).
 const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
-const connection = new IORedis(redisUrl, {
+const connection = new Redis(redisUrl, {
   maxRetriesPerRequest: null,
   ...(process.env.REDIS_PASSWORD ? { password: process.env.REDIS_PASSWORD } : {}),
   enableReadyCheck: true,
 });
 
-connection.on('error', (err) => {
+connection.on('error', (err: Error) => {
   // Log without secrets; BullMQ reconnects automatically.
   console.error('[redis] connection error:', err.message);
 });
