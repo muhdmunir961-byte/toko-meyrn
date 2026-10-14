@@ -87,7 +87,8 @@ Data fidelity:
 
 ### Contract fidelity & known gaps
 
-- Wired: `POST /auth/register`, `POST /auth/login`, `GET/PATCH /seller/branding`,
+- Wired: `POST /auth/register`, `POST /auth/login`, `POST /auth/google`,
+  `GET/PATCH /seller/branding`,
   `GET/POST /seller/providers`, `POST /seller/providers/:id/test`,
   `GET/POST /seller/whatsapp`.
 - **Not invented**: no `/auth/me`, no refresh/logout/password-reset, no
