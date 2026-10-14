@@ -31,6 +31,13 @@ fi
 
 PROJECT="${CLOUDFLARE_PAGES_PROJECT:-toko-meyrn}"
 
+# Google Sign-In client ID is inlined by Vite at BUILD time (import.meta.env.*),
+# so it cannot be supplied as a Pages runtime variable for a direct upload.
+# Put it in frontend/.env (git-ignored) or export it here; empty = button hidden.
+if [ -n "${VITE_GOOGLE_CLIENT_ID:-}" ]; then
+  export VITE_GOOGLE_CLIENT_ID
+fi
+
 echo "=== 1. Build frontend ==="
 cd frontend
 npm run build
