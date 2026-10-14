@@ -20,7 +20,6 @@
 | Fail | Tujuan |
 |---|---|
 | `frontend/functions/api/[[path]].js` | Proxy `/api/*` → `API_ORIGIN` (backend Coolify) |
-| `frontend/functions/_middleware.js` | SPA fallback untuk react-router |
 | `frontend/public/_headers` | Header keselamatan aset statik |
 | `frontend/public/_redirects` | Fallback SPA (semua laluan → index.html) |
 | `frontend/public/robots.txt` | Benarkan semua crawler |
@@ -32,6 +31,16 @@
 |---|---|---|
 | `API_ORIGIN` | `https://api.tokomeyrn.web.id` | URL backend API (subdomain api) |
 | `PUBLIC_BASE_URL` | `https://tokomeyrn.web.id` | URL awam |
+
+> ⚠️ **Wajib di-set sebelum deploy.** `frontend/functions/api/[[path]].js`
+> membaca `env.API_ORIGIN`; jika ia kosong, proxy `/api/*` akan gagal dan
+> semua panggilan API dari SPA akan rosak (405 / HTML, bukan JSON).
+> Semak: `curl -X POST https://tokomeyrn.web.id/api/v1/auth/login` mesti
+> balas JSON (`401 {"error":"invalid credentials"}`), bukan HTML.
+
+> ⚠️ **`wrangler pages deploy` mesti dijalankan dari dalam `frontend/`.**
+> wrangler mencari Pages Functions pada `$PWD/functions`; jika dijalankan dari
+> repo root, `functions/` tidak akan dihantar dan proxy `/api/*` hilang.
 
 > ⚠️ **PENTING (perlu anda sahkan):** URL Coolify yang anda beri
 > (`http://43.134.91.79:8000/...`) ialah **panel kawalan Coolify** (port 8000),
