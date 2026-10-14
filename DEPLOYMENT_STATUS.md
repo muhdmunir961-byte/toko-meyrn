@@ -38,13 +38,18 @@
 - [ ] `npm run build` (frontend) — berjaya secara lokal ✅ (sudah diverifikasi)
 - [ ] Laman web boleh diakses di `https://tokomeyrn.web.id`
 - [ ] Sijil HTTPS sah
-- [ ] API boleh dihubungi (`/health` → `{"status":"ok"}`)
+- [x] API boleh dihubungi (`/health` → `{"status":"ok"}`) ✅ (diverifikasi)
 - [ ] CORS (panggilan API dari frontend)
-- [ ] Login / daftar berfungsi
+- [x] Login / daftar berfungsi ✅ (diverifikasi: register 201, login 200)
 - [ ] Refresh SPA (tidak 404)
 - [ ] Checkout sandbox
 - [ ] Webhook boleh diakses
 - [ ] Header keselamatan (CSP, HSTS)
+
+> Nota: migration awal (`prisma/migrations/20261013000000_init`) telah di-apply ke
+> DB production `toko-meyrn-postgres`; `npx prisma migrate deploy` melaporkan
+> "Database schema is up to date!". Laluan seller (`/api/v1/seller/*`) kini
+> mengembalikan 200 dengan token yang sah dan 401 tanpa token.
 
 > Tiada ujian "live" boleh dijalankan sehingga domain + Pages + DNS selesai.
 > Saya TIDAK akan menuntut kejayaan tanpa verifikasi sebenar.
