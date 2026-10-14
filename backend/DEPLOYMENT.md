@@ -32,6 +32,13 @@
 - Review the generated SQL — only **expand-and-contract** changes in production.
 - The `migrate` service runs `prisma migrate deploy` on startup. **Never** use
   `prisma db push` in production.
+- Migrations are committed on purpose. `backend/.gitignore` must keep
+  `!prisma/migrations/**/*.sql` and `!prisma/migrations/migration_lock.toml`
+  negations, otherwise the blanket `*.sql` rule silently drops them from git and
+  the `migrate` service has nothing to apply.
+- The initial migration lives at `prisma/migrations/20261013000000_init` and is
+  already applied to the production database (`migrate status` → "Database schema
+  is up to date!").
 
 ## 3. Rolling updates & rollback
 

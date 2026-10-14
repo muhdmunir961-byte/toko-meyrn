@@ -109,7 +109,9 @@ satu hop adalah betul.
 
 1. Jana migration awal: jalankan workflow manual `Generate migration` di GitHub
    Actions → semak SQL yang dihasilkan.
-2. Commit `prisma/migrations` ke repo.
+2. Commit `prisma/migrations` ke repo. **Penting:** `backend/.gitignore` mesti
+   mengecualikan `prisma/migrations/**/*.sql` daripada peraturan `*.sql`
+   (jika tidak, migration senyap tidak akan masuk ke git).
 3. Deploy — service `migrate` (jika guna docker-compose) atau jalankan
    `npx prisma migrate deploy` sekali.
 
@@ -117,6 +119,8 @@ satu hop adalah betul.
 
 - ✅ Dockerfile multi-stage sedia ada & betul.
 - ✅ trustProxy dibaiki (`trustProxy: 1`).
-- ⏸️ Migration awal belum dijana (perlu workflow manual).
+- ✅ Migration awal dijana & di-commit (`prisma/migrations/20261013000000_init`),
+  dan telah di-apply ke DB production `toko-meyrn-postgres`. Semakan
+  `npx prisma migrate deploy` melaporkan "Database schema is up to date!".
 - ⏸️ CI belum dijalankan di GitHub (perlu tolak kod ke repo).
 - ⏸️ Tiada deploy ke Coolify/production (belum ada kelulusan).
