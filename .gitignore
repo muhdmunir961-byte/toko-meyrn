@@ -33,5 +33,8 @@ Thumbs.db
 caddy_data/
 caddy_config/
 
-# ---- Prisma generated ----
-backend/prisma/migrations/*/migration_lock.toml
+# ---- Prisma ----
+# Reviewed migrations (migration.sql + migration_lock.toml) are committed on
+# purpose: they are the schema source of truth applied by `prisma migrate deploy`.
+# Only generated client artifacts are ignored.
+backend/node_modules/.prisma/
