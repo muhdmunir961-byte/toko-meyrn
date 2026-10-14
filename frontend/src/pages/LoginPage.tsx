@@ -4,19 +4,45 @@ import { useAuth } from '../auth/AuthContext';
 import { ApiError } from '../api/errors';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 
 /**
  * Login — `/auth/login` -> `{ accessToken }`. 401 -> "invalid credentials".
  * No password-recovery contract exists, so none is offered (no invented link).
+ * Google Sign-In is offered in addition (POST /auth/google).
  */
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  function goToDestination() {
+    const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
+    navigate(from ?? '/onboarding', { replace: true });
+  }
+
+  async function onGoogleCredential(credential: string) {
+    setError(null);
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      goToDestination();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        setError('Google sign-in is not available right now.');
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError('Google could not verify that account.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Unable to sign in with Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,8 +54,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname;
-      navigate(from ?? '/onboarding', { replace: true });
+      goToDestination();
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError('Invalid email or password.');
@@ -72,6 +97,13 @@ export function LoginPage() {
               Sign in
             </Button>
           </form>
+
+          <GoogleSignInButton
+            onCredential={onGoogleCredential}
+            onError={setError}
+            disabled={loading}
+            text="signin_with"
+          />
 
           <p className="auth__footer" style={{ marginTop: '1rem' }}>
             New here? <Link to="/register">Create your store</Link>

@@ -15,6 +15,10 @@ export const envSchema = z.object({
   API_KEY_PEPPER: secret(),
   CREDENTIAL_ENCRYPTION_KEY_BASE64: secret(24),
   PUBLIC_BASE_URL: z.string().url().optional(),
+  // Google OAuth client ID used to verify Identity Services ID tokens.
+  // Optional: when unset, POST /auth/google responds 503 and password auth is
+  // unaffected, so a deployment without Google configured still boots.
+  GOOGLE_CLIENT_ID: z.string().optional(),
   MAX_RESELLER_DEPTH: z.coerce.number().int().positive().default(3),
   AI_BASE_URL: z.string().optional(),
   AI_API_KEY: z.string().optional(),

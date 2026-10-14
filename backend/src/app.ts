@@ -32,12 +32,15 @@ import { aggregateAnalytics } from './business/analytics.js';
 import { isValidDomain, normalizeDomain, isPrivateOrLocalhost } from './business/domain.js';
 import { sanitizeBranding, publicBranding } from './business/branding.js';
 import { renderMetrics, incCounter } from './business/metrics.js';
+import { verifyGoogleIdToken, GoogleAuthError } from './auth/google.js';
 
 export const db = new PrismaClient();
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
 const aiGateway = new AIModelGateway(new MockAIProvider());
 const MAX_RESELLER_DEPTH = Number(process.env.MAX_RESELLER_DEPTH ?? 3);
 const register = z.object({ email: z.string().email(), password: z.string().min(12), tenantName: z.string().min(2), storeName: z.string().min(2), slug: z.string().regex(/^[a-z0-9-]+$/) });
 const login = z.object({ email: z.string().email(), password: z.string().min(1) });
+const googleLogin = z.object({ credential: z.string().min(1) });
 const product = z.object({ masterProductId: z.string(), manualPriceMinor: z.number().int().positive().optional(), markupType: z.enum(['FIXED','PERCENTAGE','MANUAL']).optional(), markupValue: z.number().int().nonnegative().optional() });
 const order = z.object({ items: z.array(z.object({ productId: z.string(), quantity: z.number().int().positive().max(100) })).min(1).max(50) });
 
@@ -64,7 +67,45 @@ export async function buildApp() {
   app.addHook('onResponse', async (request, reply) => { const route = request.routeOptions?.url ?? request.url.split('?')[0]; incCounter('http_requests_total', { method: request.method, route, status: String(reply.statusCode) }); });
 
   app.post('/api/v1/auth/register', async (request, reply) => { const input = register.parse(request.body); const exists = await db.user.findUnique({ where: { email: input.email } }); if (exists) return reply.code(409).send({ error: 'email already registered' }); const passwordHash = await argon2.hash(input.password); const result = await db.$transaction(async tx => { const user = await tx.user.create({ data: { email: input.email, passwordHash, role: 'OWNER' } }); const t = await tx.tenant.create({ data: { name: input.tenantName } }); await tx.tenantMember.create({ data: { tenantId: t.id, userId: user.id, role: 'OWNER' } }); await tx.store.create({ data: { tenantId: t.id, name: input.storeName, slug: input.slug } }); return { user, tenant: t }; }); const token = app.jwt.sign({ id: result.user.id, tenantId: result.tenant.id, role: 'OWNER' }); return reply.code(201).send({ accessToken: token }); });
-  app.post('/api/v1/auth/login', async (request, reply) => { const input = login.parse(request.body); const user = await db.user.findUnique({ where: { email: input.email }, include: { memberships: true } }); if (!user || !(await argon2.verify(user.passwordHash, input.password)) || !user.memberships[0]) return reply.code(401).send({ error: 'invalid credentials' }); const m = user.memberships[0]; return { accessToken: app.jwt.sign({ id: user.id, tenantId: m.tenantId, role: m.role }) }; });
+  app.post('/api/v1/auth/login', async (request, reply) => { const input = login.parse(request.body); const user = await db.user.findUnique({ where: { email: input.email }, include: { memberships: true } }); if (!user || !user.passwordHash || !(await argon2.verify(user.passwordHash, input.password)) || !user.memberships[0]) return reply.code(401).send({ error: 'invalid credentials' }); const m = user.memberships[0]; return { accessToken: app.jwt.sign({ id: user.id, tenantId: m.tenantId, role: m.role }) }; });
+  // Google Sign-In (Identity Services). The browser obtains an ID token and the
+  // server verifies it; no client secret is involved. An existing account with
+  // the same verified email is linked, otherwise a new owner account + tenant +
+  // store is provisioned in one transaction (same shape as /auth/register).
+  app.post('/api/v1/auth/google', async (request, reply) => {
+    const input = googleLogin.parse(request.body);
+    if (!GOOGLE_CLIENT_ID) return reply.code(503).send({ error: 'Google sign-in is not configured' });
+    let claims;
+    try {
+      claims = await verifyGoogleIdToken(input.credential, GOOGLE_CLIENT_ID);
+    } catch (error) {
+      if (error instanceof GoogleAuthError) return reply.code(401).send({ error: 'invalid Google credential' });
+      throw error;
+    }
+    const email = claims.email.toLowerCase();
+    const existing = await db.user.findUnique({ where: { email }, include: { memberships: true } });
+    if (existing) {
+      if (!existing.memberships[0]) return reply.code(409).send({ error: 'account has no workspace' });
+      // Link the Google subject on first Google sign-in for this account.
+      if (!existing.googleId) await db.user.update({ where: { id: existing.id }, data: { googleId: claims.sub } });
+      const m = existing.memberships[0];
+      return { accessToken: app.jwt.sign({ id: existing.id, tenantId: m.tenantId, role: m.role }) };
+    }
+    // First-time Google user: derive a unique slug from the email local part.
+    const base = (email.split('@')[0] ?? 'store').toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'store';
+    const taken = await db.store.findUnique({ where: { slug: base } });
+    const slug = taken ? `${base}-${randomBytes(3).toString('hex')}` : base;
+    const displayName = claims.name?.trim() || (email.split('@')[0] ?? 'My Store');
+    const created = await db.$transaction(async tx => {
+      const user = await tx.user.create({ data: { email, googleId: claims.sub, role: 'OWNER' } });
+      const t = await tx.tenant.create({ data: { name: displayName } });
+      await tx.tenantMember.create({ data: { tenantId: t.id, userId: user.id, role: 'OWNER' } });
+      await tx.store.create({ data: { tenantId: t.id, name: displayName, slug } });
+      return { user, tenant: t };
+    });
+    const token = app.jwt.sign({ id: created.user.id, tenantId: created.tenant.id, role: 'OWNER' });
+    return reply.code(201).send({ accessToken: token });
+  });
   app.get('/api/v1/storefront/:slug', async request => { const s = await db.store.findUniqueOrThrow({ where: { slug: (request.params as {slug:string}).slug }, include: { tenant: true } }); return { id: s.id, name: s.name, tenant: s.tenant.name }; });
   app.get('/api/v1/storefront/:slug/products', async request => { const s = await db.store.findUniqueOrThrow({ where: { slug: (request.params as {slug:string}).slug } }); return db.sellerProduct.findMany({ where: { tenantId: s.tenantId, active: true }, include: { masterProduct: true } }); });
   app.addHook('preHandler', async (request, reply) => { if (request.url.startsWith('/api/v1/seller') || request.url.startsWith('/api/v1/orders')) { try { await auth(request); } catch { return reply.code(401).send({ error: 'authentication required' }); } } });

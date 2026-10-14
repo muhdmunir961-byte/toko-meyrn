@@ -5,6 +5,7 @@ import { ApiError } from '../api/errors';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Icon } from '../components/ui/Icon';
+import { GoogleSignInButton } from '../components/GoogleSignInButton';
 import { PLANS, formatPlanPrice } from '../lib/plans';
 import { useOnboarding } from '../onboarding/OnboardingContext';
 import {
@@ -26,7 +27,7 @@ import {
  * via `@unique`).
  */
 export function RegisterPage() {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const { setPlanName, markComplete } = useOnboarding();
   const navigate = useNavigate();
 
@@ -49,6 +50,29 @@ export function RegisterPage() {
   const tenantError = validateRequiredName(tenantName, 'Business name');
   const storeError = validateRequiredName(storeName, 'Store name');
   const slugError = validateSlug(slug);
+
+  async function onGoogleCredential(credential: string) {
+    setError(null);
+    setLoading(true);
+    try {
+      await loginWithGoogle(credential);
+      // The backend provisioned User + Tenant + Store in one transaction, so the
+      // account and store onboarding steps are already satisfied.
+      markComplete('account');
+      markComplete('store');
+      navigate('/onboarding', { replace: true });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 503) {
+        setError('Google sign-up is not available right now.');
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError('Google could not verify that account.');
+      } else {
+        setError(err instanceof ApiError ? err.message : 'Unable to continue with Google.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function next() {
     setError(null);
@@ -224,6 +248,15 @@ export function RegisterPage() {
               </Button>
             </div>
           </form>
+
+          {step === 0 && (
+            <GoogleSignInButton
+              onCredential={onGoogleCredential}
+              onError={setError}
+              disabled={loading}
+              text="signup_with"
+            />
+          )}
 
           <p className="auth__footer">
             Already have an account? <Link to="/login">Sign in</Link>
